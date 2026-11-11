@@ -11,7 +11,7 @@ import os
 import subprocess
 from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
 from urllib.parse import parse_qs, unquote, urlparse
 
 from . import config
@@ -27,6 +27,10 @@ WORD = "word"
 FILE_URL_PREFIX = "file://"
 ID_TIMEOUT_SECONDS = 5
 RECENT_LIMIT = 50
+CLOUD_STORAGE = Path.home() / "Library" / "CloudStorage"
+
+# Where the comment author name came from: `spsync mode --author`, `id -F`, or $USER.
+AuthorSource = Literal["setting", "full_name", "login_name"]
 
 
 class Backend(Protocol):
@@ -63,12 +67,18 @@ class SessionBackend(Backend, Protocol):
     def word(self) -> WordEditor: ...
 
 
+def onedrive_folders(cloud_storage: Path = CLOUD_STORAGE) -> list[Path]:
+    """The folders that the OneDrive app syncs, one for each signed-in account."""
+    if not cloud_storage.exists():
+        return []
+    return sorted(p for p in cloud_storage.glob("OneDrive*") if p.is_dir())
+
+
 def default_roots() -> list[Path]:
     roots = config.configured_roots()
     if roots is not None:
         return roots
-    cloud = Path.home() / "Library" / "CloudStorage"
-    return sorted(p for p in cloud.glob("OneDrive*") if p.is_dir()) if cloud.exists() else []
+    return onedrive_folders()
 
 
 def link_file_name(url: str) -> str | None:
@@ -94,13 +104,27 @@ def _full_name() -> str:
         ).stdout.strip()
     except (OSError, subprocess.SubprocessError):
         out = ""
-    return out or config.login_name()
+    return out
+
+
+def comment_author() -> tuple[str, AuthorSource]:
+    """The name for new comments and tracked changes, and its source.
+
+    The `spsync mode --author` setting wins, then the macOS full name, then the macOS login name.
+    """
+    configured = config.configured_author()
+    if configured:
+        return configured, "setting"
+    full = _full_name()
+    if full:
+        return full, "full_name"
+    return config.login_name(), "login_name"
 
 
 class LocalBackend:
     def __init__(self, roots: list[Path] | None = None, author: str | None = None) -> None:
         self.roots = roots if roots is not None else default_roots()
-        self.author = author or config.configured_author() or _full_name()
+        self.author = author or comment_author()[0]
 
     # ---- items ----
     @staticmethod

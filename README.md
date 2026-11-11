@@ -23,6 +23,12 @@ uv tool install --editable .
 spsync mode            # shows the backend, author name, and search roots
 ```
 
+Check the setup. `spsync doctor` prints a pass or fail line for the CLI version, the OneDrive folder, Word for Mac, the macOS Automation permission to control Word, and the author name. Each fail line includes one fix. The command exits with code 3 when a required check fails, and `--json` prints the same results for the plugin. The Automation check starts Word hidden when Word is closed, and quits Word after the check. The first run can show the macOS permission prompt. Allow the request so that spsync can control Word.
+
+```sh
+spsync doctor
+```
+
 To use the graph backend instead, sign in and switch to it:
 
 ```sh

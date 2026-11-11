@@ -6,7 +6,7 @@ scripting interface, so co-authoring, version history, and tracked changes work 
 
 ```text
 script.py   AppleScript literals, osascript, and the script wrapper
-app.py      Word app operations: open, inspect, save a copy, close
+app.py      Word app operations: open, inspect, save a copy, close, Automation access
 text.py     Text matching between the base document and Word's paragraphs
 ops.py      AppleScript for one change: edit, insert, delete, restyle, comment
 planner.py  The plan: which ops to run, in which order
@@ -17,6 +17,7 @@ backend.py  WordBackend, the Backend implementation
 from __future__ import annotations
 
 from ..local import WORD
+from .app import automation_allowed
 from .backend import WordBackend, md_tag
 from .planner import Plan, Planner
 from .script import WordError, build_script, lit
@@ -29,6 +30,7 @@ __all__ = [
     "WordBackend",
     "WordError",
     "align",
+    "automation_allowed",
     "build_script",
     "lit",
     "md_tag",
