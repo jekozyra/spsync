@@ -1,0 +1,6 @@
+.agents/**
+.pi/**
+.dev/**
+tools/oxlint/anti-slop/**
+pnpm-lock.yaml
+main.js
