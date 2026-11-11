@@ -16,3 +16,15 @@ pre-commit:
     pytest:
       glob: "*.{py,docx}"
       run: uv run pytest -q
+    plugin-format:
+      root: obsidian-plugin/
+      glob: "*.{ts,json}"
+      run: pnpm run format:check
+    plugin-lint:
+      root: obsidian-plugin/
+      glob: "*.ts"
+      run: pnpm run lint
+    plugin-build:
+      root: obsidian-plugin/
+      glob: "*.{ts,json}"
+      run: pnpm run build
