@@ -19,11 +19,11 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 from .graph import GraphError
 from .inline import Seg, parse_inline, plain
 from .mdparse import PItem
+from .ooxml import elements
 from .patch import PARA_KINDS, Report, _tokens, pair_hunk
 from .reader import (
     Item,
     Reader,
-    elements,
     join_items,
     load_document,
     read_comments,
