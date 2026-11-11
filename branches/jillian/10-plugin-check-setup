@@ -2,5 +2,11 @@
   "base": {
     "name": "jillian/10-doctor-cli",
     "hash": "e366660c219dc5ef0155b85e01d8a08c69761e98"
-  }
+  },
+  "pr": {
+    "number": 19,
+    "url": "https://github.com/jekozyra/spsync/pull/19"
+  },
+  "pr_title": "feat(plugin): add check setup command and author setting",
+  "pr_description": "## Goal\n\nShow the `spsync doctor` results in Obsidian, and let teammates set the comment author name in the plugin. Teammates use the plugin and do not use Terminal.\n\n## Summary\n\nThe new \"Check setup\" command runs `spsync doctor --json` and shows each check in a modal. Each row shows Pass, Fail, or \"Fail (optional)\", the check name, the detail, and the fix for a failed check. A notice shows while the check runs, because the Automation check can start Word in the background. The plugin's `run` function now accepts a list of exit codes that still describe a result. `doctor` exits with code 3 when a required check fails, and the modal still shows the results.\n\nThe new \"Author name\" setting shows the name from `spsync mode --json`. When the field loses focus, the plugin saves the name with `spsync mode --author`. The CLI and the plugin therefore use the same name from one setting. An empty field keeps the saved name. The `doctor` author line now names this setting, and the README describes the command and the setting.\n\nThis change does not touch docx reading or patching.\n\n## Testing\n\n- `pnpm -C obsidian-plugin run format:check`, `pnpm -C obsidian-plugin run lint`, and `pnpm -C obsidian-plugin run build` pass.\n- `uv run ruff format --check`, `uv run ruff check`, `uv run ty check`, `uv run anti-slop-python src tests`, and `uv run pytest` pass.\n- Manual check still needed in Obsidian: run \"Check setup\" and confirm that the modal lists every check. Change the author name in the settings tab, then confirm that `spsync mode` shows the new name.\n\n## Issue\n\nCloses #10\n"
 }
