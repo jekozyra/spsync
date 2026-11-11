@@ -60,6 +60,9 @@ class Graph:
     def me(self) -> dict:
         return self._req("GET", "/me?$select=displayName,mail,userPrincipalName")
 
+    def my_drive_id(self) -> str:
+        return self._req("GET", "/me/drive")["id"]
+
     # ---- items ----
     def item(self, drive_id: str, item_id: str) -> dict:
         return self._req("GET", f"/drives/{drive_id}/items/{item_id}")

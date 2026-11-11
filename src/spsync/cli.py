@@ -9,10 +9,12 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from urllib.parse import unquote
 
-from .auth import CONFIG_DIR, Auth, AuthError
+from .auth import CONFIG_DIR, Auth, AuthError, load_config, save_config
 from .core import Session, SyncError
 from .graph import Graph, GraphError
+from .local import backend
 from .mdparse import split_frontmatter
 
 LAST_SEARCH = CONFIG_DIR / "last_search.json"
@@ -36,13 +38,32 @@ def cmd_login(args):
     print(f"Signed in as {me.get('displayName')} <{me.get('mail') or me.get('userPrincipalName')}>")
 
 
+def cmd_mode(args):
+    cfg = load_config()
+    if args.mode:
+        cfg["backend"] = args.mode
+        save_config(cfg)
+    if args.author:
+        cfg["author"] = args.author
+        save_config(cfg)
+    if args.root:
+        cfg["roots"] = [str(Path(r).expanduser()) for r in args.root]
+        save_config(cfg)
+    b = backend()
+    print(f"backend: {b.mode}")
+    if b.mode == "local":
+        print(f"author:  {b.local.author}")
+        for r in b.local.roots:
+            print(f"root:    {r}")
+
+
 def cmd_logout(args):
     Auth().logout()
     print("Signed out.")
 
 
 def cmd_whoami(args):
-    me = Graph().me()
+    me = backend().me()
     print(f"{me.get('displayName')} <{me.get('mail') or me.get('userPrincipalName')}>")
 
 
@@ -75,11 +96,11 @@ def _print_hits(hits, as_json=False):
 
 
 def cmd_search(args):
-    _print_hits(Graph().search(" ".join(args.query), size=args.limit), args.json)
+    _print_hits(backend().search(" ".join(args.query), size=args.limit), args.json)
 
 
 def cmd_recent(args):
-    _print_hits(Graph().recent()[: args.limit], args.json)
+    _print_hits(backend().recent()[: args.limit], args.json)
 
 
 def _expand_ref(ref: str) -> str:
@@ -161,6 +182,8 @@ def cmd_open(args):
     note = Path(args.note).expanduser()
     fm, _ = split_frontmatter(note.read_text())
     url = fm.get("sharepoint")
+    if url and url.startswith("file://"):
+        url = unquote(url[7:])
     if not url:
         raise SyncError("This note has no `sharepoint` link.")
     subprocess.run(["open", url], check=False)
@@ -207,6 +230,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--device", action="store_true", help="Use a device code instead of a browser window")
     s.set_defaults(fn=cmd_login)
     sub.add_parser("logout", help="Forget cached tokens").set_defaults(fn=cmd_logout)
+    s = sub.add_parser("mode", help="Show or set the backend (local OneDrive files, or Graph)")
+    s.add_argument("mode", nargs="?", choices=["local", "graph"])
+    s.add_argument("--author", help="Name used on comments and tracked changes in local mode")
+    s.add_argument("--root", action="append", help="Folder to search for synced docs (repeatable)")
+    s.set_defaults(fn=cmd_mode)
     sub.add_parser("whoami", help="Show the signed-in account").set_defaults(fn=cmd_whoami)
 
     s = sub.add_parser("search", help="Find Word documents across SharePoint and OneDrive")

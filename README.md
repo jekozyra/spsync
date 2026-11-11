@@ -26,6 +26,13 @@ Comments appear as callouts under the paragraph they're attached to:
 
 Tables, images, fields, content controls, footnotes, and paragraphs with pending tracked changes are shown but locked. Edits to them are skipped with a warning. Pending tracked changes show as `==inserted==` and `~~deleted~~`. Notes inside `%% ... %%` stay private and are never uploaded.
 
+## Backends
+
+- **local** (default): works on `.docx` files the OneDrive app syncs to `~/Library/CloudStorage/OneDrive-*`. No Graph consent needed. To reach a SharePoint library, open it in the browser and click **Sync** or **Add shortcut to My files**. `search` and `recent` scan those folders by file name. Pushes are refused while the file is open in Word on this Mac, or if it changed since the pull (then `sync` merges).
+- **graph**: talks to Microsoft Graph directly (`spsync login`, then `spsync mode graph`). Needs tenant consent.
+
+`spsync mode` shows the current backend, author name, and search roots. `spsync mode local --author "Name" --root <folder>` changes them.
+
 ## Setup
 
 ```sh

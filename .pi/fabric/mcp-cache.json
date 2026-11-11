@@ -1,0 +1,443 @@
+{
+  "version": 1,
+  "layers": [],
+  "updatedAt": "2026-11-11T00:42:02.454Z",
+  "servers": {
+    "headroom": {
+      "definitionHash": "09b9e6b8a2a49331ab44becc5998d4a9172292774ddac8923d09b8c448e9f7b2",
+      "transport": "stdio",
+      "description": null,
+      "fetchedAt": "2026-11-11T00:41:41.136Z",
+      "stale": false,
+      "tools": [
+        {
+          "name": "headroom_compress",
+          "description": "Compress content to save context window space. Use this on large tool outputs, file contents, search results, or any content you want to shrink before reasoning over it. The original is stored and can be retrieved later via mcp__headroom__headroom_retrieve. Returns compressed text + a hash for retrieval.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "string",
+                "description": "The content to compress. Can be any text: file contents, JSON, search results, logs, code, etc."
+              }
+            },
+            "required": [
+              "content"
+            ]
+          }
+        },
+        {
+          "name": "headroom_retrieve",
+          "description": "Retrieve original uncompressed content by hash. Use this when you need full details from previously compressed content. The hash comes from headroom_compress results or from compression markers like [N items compressed... hash=abc123].",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "hash": {
+                "type": "string",
+                "description": "Hash key from compression (e.g., 'abc123' from hash=abc123)"
+              },
+              "query": {
+                "type": "string",
+                "description": "Optional search query to filter results. If provided, returns only items matching the query."
+              }
+            },
+            "required": [
+              "hash"
+            ]
+          }
+        },
+        {
+          "name": "headroom_stats",
+          "description": "Show compression statistics for this session: total compressions, tokens saved, estimated cost savings, and recent compression events.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+          }
+        }
+      ]
+    },
+    "caveman": {
+      "definitionHash": "a0c5c96c91b33490f95106d808e71f52963751a8c10b22ce5e0a65bbd7b91d11",
+      "transport": "stdio",
+      "description": null,
+      "fetchedAt": "2026-11-11T00:42:01.222Z",
+      "stale": false,
+      "tools": [
+        {
+          "name": "caveman_compress",
+          "description": "Compress a large text or tool-output payload before it enters the model context. Lossy (S4) but reversible: returns the compressed text, an inferred token ratio, and a recovery_handle for caveman_retrieve. Fails closed: unusable input or a result that is not smaller returns unchanged with ratio 0.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "content_type": {
+                "description": "Optional engine content type, e.g. json or toon.",
+                "type": "string"
+              },
+              "input": {
+                "description": "The payload to compress.",
+                "type": "string"
+              },
+              "type": {
+                "description": "Alias for content_type.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "input"
+            ]
+          }
+        },
+        {
+          "name": "caveman_retrieve",
+          "description": "Recover content that a previous caveman_compress (or the Caveman Engine) dropped. LAST RESORT, not a paging API. An elision marker states facts computed from the exact units it replaced (\"… 340 rows elided (caveman): all state=charged; range amount=5.00..199.99 …\"), and every dropped unit resembles one still shown — so counts, totals, and per-field questions are usually answerable from the visible view plus those invariants, with no call at all. Retrieve only for exact bytes you cannot derive that way, and then make ONE call per handle with a broad query covering everything you need; a sequence of narrow per-row retrievals re-reads the whole conversation prefix each time and costs far more than the compression saved. Pass the exact recovery_handle beginning ccr_; full <<ccr:...>> markers and ccr:ccr_ prefixes are normalized. Unknown handles fail explicitly. A query-narrowed view returns COMPLETE records only — never a plucked line — and prints \"… [caveman: non-adjacent] …\" wherever content was skipped, including at the start and end: records on either side of that marker are NOT consecutive and nothing may be inferred from their order or from what is missing between them.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "description": "Optional but strongly preferred: one broad description covering every detail you need from this handle, so a single call answers the whole question instead of many narrow ones.",
+                "type": "string"
+              },
+              "recovery_handle": {
+                "description": "Exact ccr_ handle returned by Caveman or copied from a <<ccr:HANDLE>> marker.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "recovery_handle"
+            ]
+          }
+        },
+        {
+          "name": "caveman_stats",
+          "description": "Report this session's aggregate compression: tokens before/after, request count, and an inferred ratio. Local-only; never a verified figure.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "name": "caveman_toon_encode",
+          "description": "Re-encode uniform/tabular JSON as TOON before quoting it into context — smaller for arrays of same-shaped objects. Lossless data re-encoding with JSON round-trip; input that cannot round-trip is returned unchanged with a note saying why. Returns both sizes so you can decide.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "input": {
+                "description": "The JSON to re-encode as TOON.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "input"
+            ]
+          }
+        },
+        {
+          "name": "caveman_toon_decode",
+          "description": "Decode TOON back into JSON. Fails loudly on input that is not valid TOON — it never emits the raw input as if it were JSON.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "input": {
+                "description": "The TOON to decode back into JSON.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "input"
+            ]
+          }
+        }
+      ]
+    },
+    "aws-mcp": {
+      "definitionHash": "4dd5a929a42bea5204a1f497f12fcc5cff984e4429e13188b3e0449d0c5e5f16",
+      "transport": "http",
+      "description": null,
+      "fetchedAt": "2026-11-11T00:42:02.302Z",
+      "stale": false,
+      "tools": [
+        {
+          "name": "aws___get_presigned_url",
+          "description": "Generate pre-signed S3 URLs for uploading or downloading files. Use BEFORE run_script when an operation requires a local file. Use for direct S3 uploads/downloads. Max upload 5 GB; larger files use multipart. For uploads: generates PUT URL. For downloads: generates GET URL. No special headers needed unless s3_params provided—then corresponding HTTP headers MUST be included or request fails with SignatureDoesNotMatch.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "requests": {
+                "description": "Array of 1-25 presigned URL requests.",
+                "items": {
+                  "description": "A single presigned URL request.",
+                  "properties": {
+                    "operation": {
+                      "description": "PUT (upload) or GET (download).",
+                      "enum": [
+                        "upload",
+                        "download"
+                      ],
+                      "type": "string"
+                    },
+                    "bucket": {
+                      "description": "S3 bucket name.",
+                      "type": "string"
+                    },
+                    "key": {
+                      "description": "S3 object key.",
+                      "type": "string"
+                    },
+                    "region": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Override region. Falls back to session region."
+                    },
+                    "expires_in": {
+                      "default": 900,
+                      "description": "URL expiration in seconds (1–900). Above 900 → S3 rejects with 403.",
+                      "maximum": 900,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "s3_params": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": {
+                            "type": "string"
+                          },
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Extra S3 parameters to sign (e.g. ContentType). Corresponding headers MUST be included."
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "bucket",
+                    "key"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "requests"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "x-fastmcp-wrap-result": true
+          }
+        },
+        {
+          "name": "aws___get_tasks",
+          "description": "Poll status of long-running tasks. Use after a tool call returns task_id with status \"working\". Up to 3 IDs per call. Tasks expire after 5 min. Pass poll_iteration (start at 1, increment each call) and follow the recommended_wait_seconds in the response before polling again.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "task_ids": {
+                "description": "One or more task IDs (up to 3) from previous tool invocations.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "poll_iteration": {
+                "anyOf": [
+                  {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Poll attempt number (1-based, increment each call). Used to suggest wait time before next poll."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "task_ids"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        {
+          "name": "aws___run_script",
+          "description": "Execute Python code in sandboxed environment with AWS API access via `call_boto3`. No network except `call_boto3`.\n\n```python\nasync def call_boto3(\n    *,\n    service_name: str,\n    operation_name: str,\n    region_name: str | None = None,\n    params: dict | None = None,\n) -> dict: ...\n```\n\n``operation_name`` MUST be the PascalCase AWS API operation name (e.g. ``ListBuckets``,\n``GetTable``, ``StartQueryExecution``). Do not use the snake_case boto3 method name\n(``list_buckets``, ``get_table``); exact matches are corrected only as a runtime fallback.\n\nResponse includes `api_calls` list—verify APIs ran before trusting `return_value`.\n\nREQUIRED PATTERNS:\n- Return `result={...}` then `result` alone as final expression\n- Call each API once; results auto-paginate\n- Return ALL resources—missing one is wrong\n- Return raw data fields; let LLM judge thresholds\n- Use `asyncio.gather(*[...])` with `return_exceptions=True` for reads; let mutations raise\n\n⚠️ LIST→DESCRIBE: List* returns only names/ARNs. Use Get*/Describe* for attributes.\n\n⚠️ CONTENTS vs CONTAINER: \"empty buckets\"→ListObjects; \"records\"→Scan; \"X configured\"→Get*Configuration.\n\n⚠️ PAGINATION: capped at 1000; a NextToken/Marker means more.\n\nRULES:\n1. SELF-CONTAINED: Discover resources inside script.\n2. ALL-REGIONS: DescribeRegions→gather per region.\n3. PERMISSIONS: All policies ONE script. `bucket`≠`bucket/*`. Report YES/PARTIAL/NO.\n\nPRE-IMPORTED: asyncio, collections, csv, dataclasses, datetime, decimal, enum, fractions, functools, itertools, json, math, re, statistics, string, time, typing, uuid, ClientError, io.StringIO, io.BytesIO.\n\nBUILTIN MODULES: higher-level AWS helper functions for complex jobs. Find out more with:\n\n```python\nimport aws_mcp\nhelp(aws_mcp)\n```\n\nTo search for available functions:\n\n```python\nawait aws_mcp.search_functions(\"search query in natural language\")\n```",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "description": "Python code to execute",
+                "type": "string"
+              }
+            },
+            "required": [
+              "code"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "aws___get_regional_availability",
+          "description": "AWS resource availability per region.\n\n- Max 10 regions; multi-region needs `filters`; single-region supports `next_token`.\n- Status: isAvailableIn | isNotAvailableIn | isPlannedIn | Not Found.\n- Response key: products | service_apis | cfn_resources.\n\nNot for region counts/docs/vague queries -- use `search_documentation` / `list_regions`.\n\nFilter values must EXACTLY match AWS's catalog names; guessed, partial, or pluralized names are rejected (\"values in filter parameter do not exist\"). If unsure of the exact name, first call once for a single region with resource_type set and NO filters to list all valid names, then re-call filtering on the exact match.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "regions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "AWS region codes (max 10). Multi-region requires `filters`; single-region supports `next_token`."
+              },
+              "resource_type": {
+                "type": "string",
+                "description": "Required: 'product' | 'api' | 'cfn'."
+              },
+              "filters": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Use exact AWS product or sub-feature name.\n\n- product: 'Amazon Bedrock' (service), or sub-features like 'Comprehend Auto Scaling', 'Latency-Based Routing', 'PrivateLink Support'. When the user names a specific sub-feature, filter on the sub-feature -- do NOT generalize to the parent service ('Amazon Comprehend'); that returns availability for the wrong scope.\n- api: 'SdkServiceId+Operation' (e.g. 'CloudFormation+CreateStack', 'IAM+GetSSHPublicKey') or 'SdkServiceId' (e.g. 'EC2'). Use a literal '+' between service and operation -- not space, colon, or hyphen.\n- cfn: 'AWS::EC2::Instance', 'AWS::Lambda::Function'.\n\nInclude every region the user named; don't add filters they didn't request.\n\nValues must EXACTLY match AWS's catalog (e.g. 'AWS Lambda', not 'Lambda' or 'AWS Lambda Service'). If unsure of the exact name, first call once for one region with NO filters to list valid names, then filter on the exact match."
+              },
+              "next_token": {
+                "type": "string",
+                "description": "Pagination token. Single-region, no filters only."
+              },
+              "region": {
+                "type": "string",
+                "description": "Unused; use `regions`."
+              }
+            },
+            "required": [
+              "resource_type"
+            ]
+          }
+        },
+        {
+          "name": "aws___list_regions",
+          "description": "Retrieve a list of all AWS regions.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+          }
+        },
+        {
+          "name": "aws___read_documentation",
+          "description": "Fetch full AWS doc pages as markdown. `search_documentation` already returns verbatim page chunks, so don't re-read a URL whose chunk you already have to \"confirm\" or \"round out\" an answer -- the chunk is the real page text; treat it as authoritative.\n\nReading the full page is justified ONLY when the chunks genuinely lack the content:\n- an enumeration or aggregation (\"list all X\", \"how many X\") needs the complete set and the chunks show only part of it;\n- no search result is on-topic after refining the query, and a known doc URL would have the answer.\nOtherwise, answer from the chunks. Use exact URLs from `search_documentation`; don't guess slugs.\n\nInput: `requests: [{url, max_length?, start_index?}]`. Batch 2-5.\n- `max_length` default 10000.\n- `start_index` default 0; use prior `end_index` to continue, TOC offset to jump.\n\nAllow-listed prefixes: docs.aws.amazon.com; aws.amazon.com (not /marketplace); repost.aws/knowledge-center; docs.amplify.aws; ui.docs.amplify.aws; github.com/{aws-cloudformation/aws-cloudformation-templates, aws-samples/{aws-cdk-examples, generative-ai-cdk-constructs-samples, serverless-patterns}, awsdocs/aws-cdk-guide, awslabs/aws-solutions-constructs, cdklabs/cdk-nag} (README on `main`); constructs.dev/packages/{@aws-cdk-containers, @aws-cdk, @cdk-cloudformation, aws-analytics-reference-architecture, aws-cdk-lib, cdk-amazon-chime-resources, cdk-aws-lambda-powertools-layer, cdk-ecr-deployment, cdk-lambda-powertools-python-layer, cdk-serverless-clamscan, cdk8s, cdk8s-plus-33}; strandsagents.com/latest/documentation/docs/; karpenter.sh/docs/; Amazon Braket: {amazon-braket-sdk-python, amazon-braket-schemas-python, amazon-braket-default-simulator-python, amazon-braket-pennylane-plugin-python, amazon-braket-algorithm-library, qiskit-braket-provider, autoqasm, qirtoqasm}.readthedocs.io and github.com/amazon-braket/* (blob/tree/raw).\n\nOutput: SUCCESS -- markdown + `total_length, start_index, end_index, truncated, redirected_url?` (truncated includes TOC with char ranges). ERROR -- `error_code` in {not_found, invalid_url, throttled, downstream_error, validation_error}.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "requests": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "description": "Doc URL with allow-listed prefix; use exact URL from search."
+                    },
+                    "max_length": {
+                      "type": "integer",
+                      "description": "Chars returned (default 10000)."
+                    },
+                    "start_index": {
+                      "type": "integer",
+                      "description": "Char offset (default 0). Use prior `end_index` to continue, or TOC offset to jump."
+                    }
+                  },
+                  "required": [
+                    "url"
+                  ]
+                },
+                "description": "List of `{url, max_length?, start_index?}`. Batch 2-5."
+              }
+            },
+            "required": []
+          }
+        },
+        {
+          "name": "aws___retrieve_skill",
+          "description": "Retrieve an AWS skill (workflows, references). Returns SKILL.md, or `file` if given.\n\nCall `search_documentation` FIRST and copy `skill_name` verbatim -- it is an opaque registry ID. Never guess or fabricate `skill_name` or `file`.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "Optional file path within the skill, copied as cited (e.g. `references/architecture.md`). Don't add or strip a `references/` prefix. Omit for SKILL.md."
+              },
+              "skill_name": {
+                "type": "string",
+                "description": "Required. Exact `skill_name` from a search_documentation result, copied verbatim. Do not invent or modify."
+              }
+            },
+            "required": [
+              "skill_name"
+            ]
+          }
+        },
+        {
+          "name": "aws___search_documentation",
+          "description": "AWS docs search. Each result's `context` is verbatim page text -- a real chunk of the actual page, not a short snippet -- and usually already contains the answer, so answer directly from it. Use `read_documentation` only when the chunks genuinely lack the needed detail.\n\nPick ONE topic. Add a 2nd ONLY if query genuinely spans domains. Extra topics dilute ranking.\n\n- reference_documentation -- API/SDK/CLI specs, config params\n- current_awareness -- new/released/announced\n- troubleshooting -- errors, \"how to fix\" (NOT for conceptual/feature questions)\n- amplify_docs -- Amplify (+ language)\n- cdk_docs -- CDK concepts/guides\n- cdk_constructs -- CDK code samples, L3\n- cloudformation -- CFN/SAM templates\n- strands_docs -- Strands Agents SDK (its Skills/agents concepts go here, NOT agent_skills)\n- agent_skills -- this tool's guided skills (load via `retrieve_skill`)\n- general (default) -- architecture, best practices, tutorials, feature behavior\n\nResults: rank_order (lower=better), url, title, context (verbatim page chunk -- answer directly from it).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": "integer",
+                "description": "Maximum number of results to return (default 4)."
+              },
+              "search_phrase": {
+                "type": "string",
+                "description": "Keywords; preserve exact error strings and all task terms verbatim."
+              },
+              "topics": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "description": "topic name"
+                },
+                "description": "Up to 3 from: reference_documentation, current_awareness, troubleshooting, amplify_docs, cdk_docs, cdk_constructs, cloudformation, agent_skills, strands_docs, general. Default [\"general\"]."
+              }
+            },
+            "required": [
+              "search_phrase"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
