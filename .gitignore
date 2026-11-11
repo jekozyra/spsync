@@ -7,3 +7,5 @@ obsidian-plugin/node_modules/
 obsidian-plugin/main.js
 .pi/
 .dev/
+build/
+dist/
