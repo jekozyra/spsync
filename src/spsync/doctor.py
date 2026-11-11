@@ -152,7 +152,8 @@ def _author(env: SetupEnvironment) -> Check:
         ok=True,
         required=False,
         detail=(
-            f'{env.author}, from {AUTHOR_SOURCES[env.author_source]}. Change it with spsync mode --author "Your Name".'
+            f"{env.author}, from {AUTHOR_SOURCES[env.author_source]}."
+            ' Change it with spsync mode --author "Your Name", or with the "Author name" setting of the Obsidian plugin.'
         ),
     )
 

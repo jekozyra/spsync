@@ -44,7 +44,7 @@ mkdir -p <vault>/.obsidian/plugins/spsync
 cp main.js manifest.json <vault>/.obsidian/plugins/spsync/
 ```
 
-Then enable **SharePoint Sync** under Settings > Community plugins.
+Then enable **SharePoint Sync** under Settings > Community plugins. Run **Check setup** from the command palette to see the `spsync doctor` results in Obsidian.
 
 ## Usage
 
@@ -98,7 +98,7 @@ Settings live in `~/.config/spsync/`. Graph tokens are cached in the macOS Keych
 | `SPSYNC_CLIENT_ID`, `SPSYNC_TENANT` | Custom Graph app registration |
 | `SPSYNC_CONFIG_DIR` | Config location (default `~/.config/spsync`) |
 
-The plugin's settings tab sets the CLI path, automatic sync, the idle and polling intervals, and whether edits go out as tracked changes.
+The plugin's settings tab sets the CLI path, the author name, automatic sync, the idle and polling intervals, and whether edits go out as tracked changes. The author name setting runs `spsync mode --author`, so the CLI uses the same name.
 
 ## Project structure
 

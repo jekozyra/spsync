@@ -42,6 +42,28 @@ interface Hit {
   by: string;
 }
 
+/** One setup check, as printed by `spsync doctor --json` (`Check` in doctor.py). */
+interface SetupCheck {
+  name: string;
+  ok: boolean;
+  required: boolean;
+  detail: string;
+  fix: string;
+}
+
+/** The output of `spsync doctor --json`. `complete` is true when every required check passed. */
+interface SetupReport {
+  complete: boolean;
+  checks: SetupCheck[];
+}
+
+/** The settings that `spsync mode --json` prints. */
+interface ModeReport {
+  backend: string;
+  author: string;
+  roots: string[];
+}
+
 // Frontmatter keys that `spsync pull` writes.
 const FM_REF = "spsync";
 const FM_URL = "sharepoint";
@@ -49,6 +71,9 @@ const WORD_REF_PREFIX = "word:";
 
 // `spsync sync` exits with this code when a note has conflicts; the output still describes the result.
 const EXIT_CONFLICT = 2;
+
+// `spsync doctor` exits with this code when a required check fails; the output still lists every check.
+const EXIT_SETUP_INCOMPLETE = 3;
 const MS_PER_SECOND = 1000;
 const MS_PER_MINUTE = 60 * MS_PER_SECOND;
 const CLI_TIMEOUT_MS = 5 * MS_PER_MINUTE;
@@ -126,6 +151,11 @@ export default class SpsyncPlugin extends Plugin {
       callback: () => this.createFromActive(),
     });
     this.addCommand({
+      id: "check-setup",
+      name: "Check setup",
+      callback: () => this.checkSetup(),
+    });
+    this.addCommand({
       id: "comment",
       name: "Comment on this paragraph",
       editorCallback: (e) => this.insertComment(e),
@@ -198,7 +228,8 @@ export default class SpsyncPlugin extends Plugin {
     return p.startsWith("~") ? path.join(os.homedir(), p.slice(1)) : p;
   }
 
-  run(args: string[]): Promise<string> {
+  /** Run the CLI. An exit code in `acceptedExitCodes` still describes a result, so it resolves with stdout. */
+  run(args: string[], acceptedExitCodes: readonly number[] = [EXIT_CONFLICT]): Promise<string> {
     return new Promise((resolve, reject) => {
       execFile(
         this.cli(),
@@ -212,7 +243,7 @@ export default class SpsyncPlugin extends Plugin {
         (err, stdout, stderr) => {
           if (err && err.code === "ENOENT") {
             reject(new Error(`spsync CLI not found at ${this.cli()}. Set its path in settings.`));
-          } else if (err && err.code !== EXIT_CONFLICT) {
+          } else if (err && !acceptedExitCodes.some((code) => code === err.code)) {
             reject(new Error((stderr || stdout || err.message).trim()));
           } else {
             resolve((stdout || "").trim());
@@ -225,6 +256,18 @@ export default class SpsyncPlugin extends Plugin {
   async hits(args: string[]): Promise<Hit[]> {
     // SAFETY: `--json` output is a list of objects with exactly the Hit keys (`_print_hits` in cli.py).
     return JSON.parse(await this.run([...args, "--json"])) as Hit[];
+  }
+
+  async setupReport(): Promise<SetupReport> {
+    const out = await this.run(["doctor", "--json"], [EXIT_SETUP_INCOMPLETE]);
+
+    // SAFETY: `spsync doctor --json` prints `complete` and a list of SetupCheck objects (`cmd_doctor` in cli.py).
+    return JSON.parse(out) as SetupReport;
+  }
+
+  async modeReport(args: string[] = []): Promise<ModeReport> {
+    // SAFETY: `spsync mode --json` prints exactly the ModeReport keys (`cmd_mode` in cli.py).
+    return JSON.parse(await this.run(["mode", ...args, "--json"])) as ModeReport;
   }
 
   setStatus(text: string) {
@@ -413,6 +456,18 @@ export default class SpsyncPlugin extends Plugin {
     ).open();
   }
 
+  async checkSetup() {
+    const progress = notify("Checking setup. Word can start in the background.", STICKY_NOTICE);
+
+    try {
+      new SetupModal(this.app, await this.setupReport()).open();
+    } catch (e) {
+      notify(`Setup check failed: ${errorText(e)}`, ERROR_NOTICE_MS);
+    } finally {
+      progress.hide();
+    }
+  }
+
   insertComment(editor: Editor) {
     let line = editor.getCursor().line;
     const last = editor.lastLine();
@@ -516,6 +571,39 @@ class LinkModal extends TextModal {
   }
 }
 
+function checkLabel(check: SetupCheck): string {
+  if (check.ok) {
+    return "Pass";
+  }
+
+  return check.required ? "Fail" : "Fail (optional)";
+}
+
+class SetupModal extends Modal {
+  constructor(
+    app: App,
+    private report: SetupReport,
+  ) {
+    super(app);
+  }
+  onOpen() {
+    this.titleEl.setText(this.report.complete ? "Setup is complete" : "Setup needs attention");
+
+    for (const check of this.report.checks) {
+      const row = this.contentEl.createDiv();
+      row.createEl("strong", { text: `${checkLabel(check)}: ${check.name}` });
+      row.createDiv({ text: check.detail });
+
+      if (check.fix) {
+        row.createDiv({ text: `Fix: ${check.fix}` });
+      }
+    }
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+}
+
 class HitModal extends SuggestModal<Hit> {
   constructor(
     app: App,
@@ -561,6 +649,33 @@ class SpsyncSettings extends PluginSettingTab {
           await save();
         }),
       );
+    add()
+      .setName("Author name")
+      .setDesc(
+        "The name on your comments and tracked changes. spsync saves it for the CLI too. Leave it empty to keep the current name.",
+      )
+      .addText((t) => {
+        t.setPlaceholder("Loading...");
+        this.plugin
+          .modeReport()
+          .then((mode) => t.setValue(mode.author))
+          .catch(() => t.setPlaceholder("Set the spsync CLI path first"));
+        // "change" fires when the field loses focus, so each keystroke does not run the CLI.
+        t.inputEl.addEventListener("change", async () => {
+          const author = t.getValue().trim();
+
+          if (!author) {
+            return;
+          }
+
+          try {
+            await this.plugin.modeReport(["--author", author]);
+            notify(`Author name set to ${author}.`);
+          } catch (e) {
+            notify(`Could not save the author name: ${errorText(e)}`, ERROR_NOTICE_MS);
+          }
+        });
+      });
     add()
       .setName("Sync automatically")
       .setDesc("Push edits after you stop typing, and pull SharePoint changes on a timer.")
