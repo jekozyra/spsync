@@ -2,6 +2,7 @@
   "trunk": "main",
   "remote": "origin",
   "merged_tips": {
-    "jillian/07-license-public": "a585f774f4189d07154ef1ad06c4388971e1d459"
+    "jillian/07-license-public": "a585f774f4189d07154ef1ad06c4388971e1d459",
+    "jillian/10-doctor-cli": "29827d7c2d5c19f691c1a3e7485e78e5f16953d3"
   }
 }
