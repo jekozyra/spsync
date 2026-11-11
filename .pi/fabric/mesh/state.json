@@ -17,12 +17,12 @@
         "model": "amazon-bedrock/us.anthropic.claude-opus-5-5",
         "thinking": "medium",
         "startedAt": 1794357679968,
-        "updatedAt": 1794368861784,
+        "updatedAt": 1794369436886,
         "pendingMessages": false,
         "local": false
       },
-      "version": 1400,
-      "updatedAt": 1794368861786,
+      "version": 1515,
+      "updatedAt": 1794369436888,
       "updatedBy": {
         "id": "session:01a1c80c-289d-7682-b6fa-f201929f4197",
         "name": "main",
@@ -53,14 +53,14 @@
         "model": "amazon-bedrock/us.anthropic.claude-opus-5-5",
         "thinking": "medium",
         "startedAt": 1794357679968,
-        "updatedAt": 1794368861784,
+        "updatedAt": 1794369436886,
         "pendingMessages": false,
         "controlProtocol": "v1",
         "ownerIncarnation": "5bd0b66d-700c-4715-81dd-4428fc35bb30",
         "label": "SPS-1"
       },
-      "version": 1401,
-      "updatedAt": 1794368861788,
+      "version": 1516,
+      "updatedAt": 1794369436891,
       "updatedBy": {
         "id": "session:01a1c80c-289d-7682-b6fa-f201929f4197",
         "name": "main",
@@ -81,11 +81,11 @@
           "sessionId": "01a1c80c-289d-7682-b6fa-f201929f4197"
         },
         "startedAt": 1794357679969,
-        "updatedAt": 1794368861791,
-        "expiresAt": 1794368876791
+        "updatedAt": 1794369436893,
+        "expiresAt": 1794369451893
       },
-      "version": 1402,
-      "updatedAt": 1794368861793,
+      "version": 1517,
+      "updatedAt": 1794369436894,
       "updatedBy": {
         "id": "session:01a1c80c-289d-7682-b6fa-f201929f4197",
         "name": "main",
@@ -109,11 +109,11 @@
       }
     }
   },
-  "highWater": 4201,
+  "highWater": 4546,
   "versions": {
-    "sessions/01a1c80c-289d-7682-b6fa-f201929f4197": 1400,
-    "topology/participants/c6cfd21c2facbc3f539d116cea30776b0e228cf30c25f9b1201f8a273827e784": 1401,
-    "topology/hosts/c6cfd21c2facbc3f539d116cea30776b0e228cf30c25f9b1201f8a273827e784": 1402,
+    "sessions/01a1c80c-289d-7682-b6fa-f201929f4197": 1515,
+    "topology/participants/c6cfd21c2facbc3f539d116cea30776b0e228cf30c25f9b1201f8a273827e784": 1516,
+    "topology/hosts/c6cfd21c2facbc3f539d116cea30776b0e228cf30c25f9b1201f8a273827e784": 1517,
     "topology/peer-seq/3": 4
   },
   "tombstoneOrder": []

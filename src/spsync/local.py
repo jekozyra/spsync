@@ -207,6 +207,14 @@ class Router:
                 if len(matches) > 1:
                     where = "; ".join(self.local._where(Path(m["id"])) for m in matches)
                     raise GraphError(409, "ambiguous", f"Several synced copies of {name} ({where}). Pull one by path.")
+                if any(r.joinpath(name + ".url").exists() for r in self.local.roots):
+                    raise GraphError(
+                        404,
+                        "fileShortcut",
+                        f"{name} is a single-file shortcut, which OneDrive syncs to the Mac as a web link (.url), not "
+                        "the document. Ask the owner to put it in a folder shared with you, then add a shortcut to "
+                        "that folder.",
+                    )
                 raise GraphError(
                     404,
                     "notSynced",
