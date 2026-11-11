@@ -6,3 +6,4 @@ __pycache__/
 obsidian-plugin/node_modules/
 obsidian-plugin/main.js
 .pi/
+.dev/
