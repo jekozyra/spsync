@@ -1,17 +1,21 @@
 #!/bin/sh
-# Build the standalone spsync command-line tool for the architecture of this Mac.
+# Build the standalone spsync command-line tool for Apple silicon Macs.
 #
 # The build needs uv and the Xcode Command Line Tools. The result needs neither Python nor uv:
 #
-#   dist/spsync-macos-<arch>/spsync      the executable; it loads the other files in its folder
-#   dist/spsync-macos-<arch>.tar.gz      the folder, packed for download
+#   dist/spsync-macos-arm64/spsync       the executable; it loads the other files in its folder
+#   dist/spsync-macos-arm64.tar.gz       the folder, packed for download
 #
-# Nuitka compiles for the architecture of the Python that runs it. Build arm64 on an Apple silicon
-# Mac and x86_64 on an Intel Mac.
+# spsync supports only Apple silicon. Nuitka compiles for the architecture of the Python that runs
+# it, so the script stops on a Mac that is not arm64.
 set -eu
 
 repo="$(cd "$(dirname "$0")/.." && pwd)"
 arch="$(uname -m)"
+if [ "$arch" != "arm64" ]; then
+  echo "build_standalone.sh builds for Apple silicon (arm64) only; this Mac is $arch." >&2
+  exit 1
+fi
 name="spsync-macos-$arch"
 work="$repo/build/$arch"
 dist="$repo/dist"
