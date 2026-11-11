@@ -134,7 +134,9 @@ def test_sync_merges_disjoint_edits(env):
 def test_adjacent_edits_merge_without_conflict():
     from spsync.core import merge_items
 
-    md, n = merge_items(["## H", "Para.", "Tail."], ["## Renamed", "Para.", "Tail."], ["## H", "Para, remote.", "Tail."])
+    md, n = merge_items(
+        ["## H", "Para.", "Tail."], ["## Renamed", "Para.", "Tail."], ["## H", "Para, remote.", "Tail."]
+    )
     assert n == 0 and "## Renamed" in md and "Para, remote." in md
 
 
@@ -155,7 +157,7 @@ def test_sync_conflict_then_resolve(env):
     # Resolve: keep a combined line and drop the callout.
     start = text.index("> [!conflict]")
     end = text.index("Gamma paragraph.")
-    note.write_text(text[:start] + text[end:].replace("Beta local.", "") .replace("Gamma", "Gamma"))
+    note.write_text(text[:start] + text[end:].replace("Beta local.", "").replace("Gamma", "Gamma"))
     note.write_text(note.read_text().replace("Beta local.", "Beta merged."))
     res = s.sync(note)
     assert res.status == "pushed", res.message

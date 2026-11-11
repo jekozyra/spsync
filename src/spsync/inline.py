@@ -88,7 +88,14 @@ def _merge(segs: list[Seg]) -> list[Seg]:
         if s.raw is not None or (out and out[-1].raw is not None):
             out.append(s)
             continue
-        if out and out[-1].fmt == s.fmt and out[-1].link == s.link and out[-1].rev == s.rev and "\n" not in s.text and "\n" not in out[-1].text:
+        if (
+            out
+            and out[-1].fmt == s.fmt
+            and out[-1].link == s.link
+            and out[-1].rev == s.rev
+            and "\n" not in s.text
+            and "\n" not in out[-1].text
+        ):
             out[-1] = Seg(out[-1].text + s.text, s.b, s.i, s.s, s.link, rev=s.rev)
         else:
             out.append(Seg(s.text, s.b, s.i, s.s, s.link, rev=s.rev))
@@ -100,8 +107,13 @@ def _wrap(text: str, b: bool, i: bool, s: bool, rev: str | None = None) -> str:
     if not core or not (b or i or s or rev):
         return escape(text)
     lead = text[: len(text) - len(text.lstrip())]
-    trail = text[len(text.rstrip()):]
-    open_ = {"ins": "==", "del": "~~"}.get(rev or "", "") + ("~~" if s and rev != "del" else "") + ("**" if b else "") + ("*" if i else "")
+    trail = text[len(text.rstrip()) :]
+    open_ = (
+        {"ins": "==", "del": "~~"}.get(rev or "", "")
+        + ("~~" if s and rev != "del" else "")
+        + ("**" if b else "")
+        + ("*" if i else "")
+    )
     return lead + open_ + escape(core) + open_[::-1] + trail
 
 
@@ -130,7 +142,8 @@ def render_inline(segs: list[Seg]) -> str:
                 group.append(merged[k])
                 k += 1
             inner = "".join(
-                g.raw if g.raw is not None else "<br>" if g.text == "\n" else _wrap(g.text, g.b, g.i, g.s, g.rev) for g in group
+                g.raw if g.raw is not None else "<br>" if g.text == "\n" else _wrap(g.text, g.b, g.i, g.s, g.rev)
+                for g in group
             )
             out.append(f"[{inner}]({_encode_url(seg.link)})")
             continue

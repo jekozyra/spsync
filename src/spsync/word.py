@@ -154,7 +154,9 @@ def open_url(url: str, edit: bool, timeout: int = 120) -> tuple[str, bool]:
                 if n.startswith("http") and unquote(n).rsplit("/", 1)[-1].lower() == name.lower():
                     time.sleep(2)
                     return n, ro
-    raise WordError("Word didn't open the document. Check the link opens in Word, and that Word is signed in.", 404, "notFound")
+    raise WordError(
+        "Word didn't open the document. Check the link opens in Word, and that Word is signed in.", 404, "notFound"
+    )
 
 
 def close_doc(url: str, save: bool = False):
@@ -307,9 +309,14 @@ def find_escape(s: str) -> str:
 
 
 STYLE = {
-    "h1": "style heading1", "h2": "style heading2", "h3": "style heading3",
-    "h4": "style heading4", "h5": "style heading5", "h6": "style heading6",
-    "p": "style normal", "quote": "style quote",
+    "h1": "style heading1",
+    "h2": "style heading2",
+    "h3": "style heading3",
+    "h4": "style heading4",
+    "h5": "style heading5",
+    "h6": "style heading6",
+    "p": "style normal",
+    "quote": "style quote",
 }
 
 
@@ -327,7 +334,9 @@ class Plan:
 
 
 class Planner:
-    def __init__(self, base_docx: bytes, base_items: list[Item], word_paras: list[str], word_comments: list[tuple[str, str]]):
+    def __init__(
+        self, base_docx: bytes, base_items: list[Item], word_paras: list[str], word_comments: list[tuple[str, str]]
+    ):
         self.doc = load_document(base_docx)
         self.reader = Reader(self.doc)
         self.children = elements(self.doc.element.body)
@@ -438,7 +447,7 @@ class Planner:
                 f"      set fr to text object of paragraph {P} of d\n"
                 f"      set found to execute find (find object of fr) find text {lit(find_escape(ctx_old), 10)} "
                 f"replace with {lit(find_escape(ctx_new), 10)} replace replace one match case true wrap find find stop\n"
-                f"      if found is false then error \"could not find the text to change\""
+                f'      if found is false then error "could not find the text to change"'
             )
             if not ctx_old or len(ctx_old) > 250:
                 fallback = '      error "text in Word did not match"'
@@ -463,7 +472,10 @@ class Planner:
         )
 
     def comment_op(self, P: str, text: str) -> str:
-        body = self.para_scope(P) + f"    make new Word comment at d with properties {{comment text:{lit(text, 13)}, scope:sc}}"
+        body = (
+            self.para_scope(P)
+            + f"    make new Word comment at d with properties {{comment text:{lit(text, 13)}, scope:sc}}"
+        )
         return self._op(body, f"comment “{_snip(text)}”")
 
     def insert_op(self, new: PItem, where: str, P: int, inherit: tuple | None) -> list[str]:
@@ -507,14 +519,14 @@ class Planner:
                 body += "    try\n      remove numbers (text object of paragraph np of d)\n    end try\n"
         rng = f"(create range d start ns end (ns + {len(text)}))"
         if new.kind == "code":
-            body += f"    set name of font object of {rng} to \"Consolas\"\n"
+            body += f'    set name of font object of {rng} to "Consolas"\n'
         if new.kind == "table":
             body += f"    try\n      convert to table {rng} separator separate by tabs\n    end try\n"
         body += "\n".join(self._fmt_ops("ns", segs, (False, False, False), allow_false=False))
         return [self._op(body, f"add “{_snip(new.md)}”")]
 
     def delete_op(self, P: int, md: str) -> str:
-        body = f"    set content of (text object of paragraph {P} of d) to \"\""
+        body = f'    set content of (text object of paragraph {P} of d) to ""'
         return self._op(body, f"remove “{_snip(md)}”")
 
     def style_op(self, P: int, kind: str, level: int, md: str) -> str:
@@ -556,7 +568,9 @@ class Planner:
                     bi, nj = i1 + op[1], j1 + op[2]
                     b, n = base[bi], new_blocks[nj]
                     if b.locked:
-                        rep.warnings.append(f"Skipped edit to a block Obsidian can't safely change ({b.lock_reason}): {_snip(b.md)}")
+                        rep.warnings.append(
+                            f"Skipped edit to a block Obsidian can't safely change ({b.lock_reason}): {_snip(b.md)}"
+                        )
                         new_of[nj] = bi
                     elif b.kind in PARA_KINDS and n.kind in PARA_KINDS:
                         mods[bi] = nj
@@ -645,12 +659,16 @@ class Planner:
                     rep.comments += 1
             if bi in deletes:
                 if base[bi].locked:
-                    rep.warnings.append(f"Skipped removing a block Obsidian can't safely change ({base[bi].lock_reason}): {_snip(base[bi].md)}")
+                    rep.warnings.append(
+                        f"Skipped removing a block Obsidian can't safely change ({base[bi].lock_reason}): {_snip(base[bi].md)}"
+                    )
                 elif base[bi].kind in PARA_KINDS:
                     plan.script.append(self.delete_op(P, base[bi].md))
                     rep.deleted += 1
                 else:
-                    rep.warnings.append(f"Removing tables and other objects isn't supported in Word mode: {_snip(base[bi].md)}")
+                    rep.warnings.append(
+                        f"Removing tables and other objects isn't supported in Word mode: {_snip(base[bi].md)}"
+                    )
         return plan
 
     def reply_ops(self, replies, rep) -> list[str]:
@@ -676,7 +694,9 @@ class Planner:
             ops.append(self._op(body, f"reply “{_snip(text)}”"))
             rep.replies += 1
         if ops:
-            rep.warnings.append("Word can't be scripted to thread replies; replies were added as comments starting with “Re <name>:”.")
+            rep.warnings.append(
+                "Word can't be scripted to thread replies; replies were added as comments starting with “Re <name>:”."
+            )
         return ops
 
     def _comment_order(self, comments):
@@ -703,7 +723,9 @@ end same
 
 
 def build_script(url: str, ops: list[str], suggest: bool) -> str:
-    return SAME + f"""tell application "Microsoft Word"
+    return (
+        SAME
+        + f"""tell application "Microsoft Word"
 {find_doc(url)}
   set errs to ""
   set oldTrack to track revisions of d
@@ -713,6 +735,7 @@ def build_script(url: str, ops: list[str], suggest: bool) -> str:
   save d
   return errs
 end tell"""
+    )
 
 
 # ---------------------------------------------------------------- backend
@@ -740,7 +763,9 @@ class WordBackend:
         for n, ro in open_docs():
             if _same(n, url):
                 if not ro:
-                    raise WordError("The document is open for editing in Word. Close it there first.", 423, "resourceLocked")
+                    raise WordError(
+                        "The document is open for editing in Word. Close it there first.", 423, "resourceLocked"
+                    )
                 close_doc(n)
 
     def fetch(self, url: str) -> tuple[str, bytes]:
@@ -772,20 +797,31 @@ class WordBackend:
     def recent(self) -> list[dict]:
         out = []
         for url, name in recent_files():
-            out.append({
-                "id": url,
-                "name": name,
-                "webUrl": url,
-                "parentReference": {"driveId": WORD},
-                "lastModifiedBy": {"user": {"displayName": "recent in Word"}},
-            })
+            out.append(
+                {
+                    "id": url,
+                    "name": name,
+                    "webUrl": url,
+                    "parentReference": {"driveId": WORD},
+                    "lastModifiedBy": {"user": {"displayName": "recent in Word"}},
+                }
+            )
         return out
 
     def search(self, query: str, size: int = 25) -> list[dict]:
         terms = [t.lower() for t in query.split()]
         return [h for h in self.recent() if all(t in h["name"].lower() for t in terms)][:size]
 
-    def apply(self, url: str, base_docx: bytes, base_items: list[Item], new_items: list[PItem], *, suggest: bool, dry_run: bool) -> tuple[Report, bytes | None]:
+    def apply(
+        self,
+        url: str,
+        base_docx: bytes,
+        base_items: list[Item],
+        new_items: list[PItem],
+        *,
+        suggest: bool,
+        dry_run: bool,
+    ) -> tuple[Report, bytes | None]:
         self._guard_not_editing(url)
         name, ro = open_url(url, edit=True)
         try:

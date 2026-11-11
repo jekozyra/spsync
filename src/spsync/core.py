@@ -81,7 +81,9 @@ class Session:
         fm, _ = split_frontmatter(note.read_text())
         ref = fm.get(FM_REF)
         if not ref:
-            raise SyncError(f"{note} is not linked to SharePoint (no `{FM_REF}` property). Use `spsync pull` or `spsync new`.")
+            raise SyncError(
+                f"{note} is not linked to SharePoint (no `{FM_REF}` property). Use `spsync pull` or `spsync new`."
+            )
         loaded = self.store.load(str(ref))
         if loaded is None:
             raise SyncError(f"No sync state for {note}. Run `spsync pull {fm.get(FM_URL) or ref} --force`.")
@@ -142,7 +144,11 @@ class Session:
         drive_id = item["parentReference"]["driveId"]
         existing = self.store.load(f"{drive_id}:{item['id']}")
         if out is None:
-            out = self.vault / existing[0].note if existing else self.vault / "SharePoint" / f"{_safe_name(item['name'])}.md"
+            out = (
+                self.vault / existing[0].note
+                if existing
+                else self.vault / "SharePoint" / f"{_safe_name(item['name'])}.md"
+            )
         if existing and out.exists() and not force:
             changed, _ = self.local_changed(existing[0], out)
             if changed:
@@ -176,7 +182,9 @@ class Session:
             self.graph.upload(b.drive_id, b.item_id, out, b.etag)
         except GraphError as exc:
             if exc.status == 412:
-                raise RemoteChangedError("The document changed in SharePoint since your last pull. Run `spsync sync` to merge.") from exc
+                raise RemoteChangedError(
+                    "The document changed in SharePoint since your last pull. Run `spsync sync` to merge."
+                ) from exc
             if exc.status == 423:
                 raise SyncError(f"The document is locked ({exc.message}). Try again shortly.") from exc
             raise
@@ -191,7 +199,9 @@ class Session:
             report, data = self.graph.word.apply(b.item_id, base, b.items, pitems, suggest=suggest, dry_run=dry_run)
         except GraphError as exc:
             if exc.status == 412:
-                raise RemoteChangedError("The document changed since your last pull. Run `spsync sync` to merge.") from exc
+                raise RemoteChangedError(
+                    "The document changed since your last pull. Run `spsync sync` to merge."
+                ) from exc
             raise
         msg = report.summary() + "".join(f"\n  warning: {w}" for w in report.warnings)
         if dry_run:
@@ -235,7 +245,10 @@ class Session:
         _fm, _ = split_frontmatter(note.read_text())
         self.write_note(note, self.store.load(f"{b.drive_id}:{b.item_id}")[0], merged)
         if conflicts:
-            return Result("conflict", f"{conflicts} conflicting section(s). Look for [!conflict] callouts in the note, fix them, delete the callouts, then sync again.")
+            return Result(
+                "conflict",
+                f"{conflicts} conflicting section(s). Look for [!conflict] callouts in the note, fix them, delete the callouts, then sync again.",
+            )
         res = self.push(note, suggest=suggest)
         return Result("merged", "Merged SharePoint changes with your edits. " + res.message)
 
@@ -253,7 +266,7 @@ class Session:
         _, pitems = parse_note(note.read_text())
         author, initials = self.me()
         out, report = apply_note(blank, read_items(blank), pitems, author=author, initials=initials, suggest=suggest)
-        filename = (name or note.stem)
+        filename = name or note.stem
         if not filename.lower().endswith(".docx"):
             filename += ".docx"
         item = self.graph.create(drive_id, folder["id"], filename, out)
@@ -277,7 +290,9 @@ def join_md(mds: list[str]) -> str:
 
 
 def conflict_callout(remote: list[str]) -> str:
-    lines = ["> [!conflict] SharePoint version of this section (changed while you were editing). Keep what you want, then delete this callout."]
+    lines = [
+        "> [!conflict] SharePoint version of this section (changed while you were editing). Keep what you want, then delete this callout."
+    ]
     for md in remote or ["(deleted in SharePoint)"]:
         for line in md.split("\n"):
             lines.append("> " + line)

@@ -32,7 +32,7 @@ def split_frontmatter(text: str) -> tuple[dict, str]:
         end = text.find("\n---", 4)
         if end != -1:
             nl = text.find("\n", end + 4)
-            body = text[nl + 1:] if nl != -1 else ""
+            body = text[nl + 1 :] if nl != -1 else ""
             try:
                 fm = yaml.safe_load(text[4:end]) or {}
             except yaml.YAMLError:
@@ -51,9 +51,7 @@ def _level(indent: str) -> int:
 
 
 def _starts_block(line: str) -> bool:
-    return bool(
-        HEADING.match(line) or LIST.match(line) or line.startswith((">", "|", "%%")) or FENCE.match(line)
-    )
+    return bool(HEADING.match(line) or LIST.match(line) or line.startswith((">", "|", "%%")) or FENCE.match(line))
 
 
 def _callout(kind: str, fold: str, header: str, body: list[str]) -> PItem:
@@ -88,8 +86,8 @@ def parse_body(body: str) -> list[PItem]:
             j = i + 1
             while j < n and not lines[j].startswith(fence):
                 j += 1
-            code = lines[i + 1:j]
-            raw = lines[i:j + 1]
+            code = lines[i + 1 : j]
+            raw = lines[i : j + 1]
             items.append(PItem(t="block", md="\n".join(x.rstrip() for x in raw), kind="code", content="\n".join(code)))
             i = j + 1
             continue
@@ -152,7 +150,9 @@ def parse_body(body: str) -> list[PItem]:
                 content.append(lines[j].strip())
                 j += 1
             kind = "ul" if m.group(2) in "-*+" else "ol"
-            items.append(PItem(t="block", md="\n".join(raw), kind=kind, level=_level(m.group(1)), content="\n".join(content)))
+            items.append(
+                PItem(t="block", md="\n".join(raw), kind=kind, level=_level(m.group(1)), content="\n".join(content))
+            )
             i = j
             continue
         raw = [line]

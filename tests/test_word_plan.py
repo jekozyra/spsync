@@ -38,7 +38,9 @@ def compile_ok(script: str):
         pytest.skip("osacompile not available")
     src = Path("/tmp/spsync-test.applescript")
     src.write_text(script, encoding="utf-8")
-    p = subprocess.run(["osacompile", "-o", "/tmp/spsync-test.scpt", str(src)], capture_output=True, text=True, check=False)
+    p = subprocess.run(
+        ["osacompile", "-o", "/tmp/spsync-test.scpt", str(src)], capture_output=True, text=True, check=False
+    )
     assert p.returncode == 0, p.stderr + "\n" + script
 
 
@@ -71,11 +73,18 @@ def test_plan_compiles_and_counts():
         md.replace("now edited", "now **boldly** revised")
         .replace("- Third bullet", "- Third bullet\n- Fourth bullet")
         .replace("### Details", "## Details")
-        .replace("Closing line, rewritten.", "Closing line, rewritten.\n\n> [!comment] New note from Obsidian\n\nA brand new paragraph.")
+        .replace(
+            "Closing line, rewritten.",
+            "Closing line, rewritten.\n\n> [!comment] New note from Obsidian\n\nA brand new paragraph.",
+        )
         .replace("> Expanded it.", "> Expanded it.\n\n> [!reply] re:0\n> Another reply")
     )
     paras = word_view(data, items)
-    comments = [("Alice Smith", "Please expand."), ("Jillian Kozyra", "Expanded it."), ("Jillian Kozyra", "New comment from Obsidian")]
+    comments = [
+        ("Alice Smith", "Please expand."),
+        ("Jillian Kozyra", "Expanded it."),
+        ("Jillian Kozyra", "New comment from Obsidian"),
+    ]
     p = Planner(data, items, paras, comments)
     p.check_fresh()
     plan = p.plan(parse_body(edited))

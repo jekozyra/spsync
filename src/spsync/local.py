@@ -91,7 +91,7 @@ class LocalBackend:
 
     def resolve(self, ref: str) -> dict:
         if ref.startswith(LOCAL + ":"):
-            ref = ref[len(LOCAL) + 1:]
+            ref = ref[len(LOCAL) + 1 :]
         if ref.startswith("file://"):
             from urllib.parse import unquote
 
@@ -100,7 +100,9 @@ class LocalBackend:
             return self._info(self.roots[0])
         path = Path(ref).expanduser()
         if not path.exists():
-            raise GraphError(404, "itemNotFound", f"No such file: {ref}. In local mode, pass a path or use `spsync search`.")
+            raise GraphError(
+                404, "itemNotFound", f"No such file: {ref}. In local mode, pass a path or use `spsync search`."
+            )
         return self._info(path)
 
     def item(self, drive_id: str, item_id: str) -> dict:
@@ -213,7 +215,11 @@ class Router:
                 if line.startswith("URL="):
                     return self.word.resolve(line[4:].strip())
         is_url = ref.startswith("http")
-        if not is_url and (ref.startswith((LOCAL + ":", "file://", "/", "~", ".")) or Path(ref).expanduser().exists() or self.mode == LOCAL):
+        if not is_url and (
+            ref.startswith((LOCAL + ":", "file://", "/", "~", "."))
+            or Path(ref).expanduser().exists()
+            or self.mode == LOCAL
+        ):
             return self.local.resolve(ref)
         if is_url and self.mode == LOCAL:
             name = link_file_name(ref)
@@ -265,7 +271,9 @@ class Router:
     def search(self, query, size=25):
         if self.mode != LOCAL:
             return self.graph.search(query, size)
-        return self._with_word(self.local.search(query, size), self._word_hits(lambda: self.word.search(query, size)))[:size]
+        return self._with_word(self.local.search(query, size), self._word_hits(lambda: self.word.search(query, size)))[
+            :size
+        ]
 
     def recent(self):
         if self.mode != LOCAL:

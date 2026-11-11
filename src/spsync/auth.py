@@ -74,7 +74,11 @@ class Auth:
             print(flow["message"], file=sys.stderr, flush=True)
             result = self.app.acquire_token_by_device_flow(flow)
         else:
-            print("Opening a browser to sign in. If it asks for admin approval, your tenant needs IT consent; press Ctrl-C.", file=sys.stderr, flush=True)
+            print(
+                "Opening a browser to sign in. If it asks for admin approval, your tenant needs IT consent; press Ctrl-C.",
+                file=sys.stderr,
+                flush=True,
+            )
             result = self.app.acquire_token_interactive(scopes=SCOPES, prompt="select_account", timeout=180)
         if "access_token" not in result:
             raise AuthError(result.get("error_description") or result.get("error") or "Sign-in failed.")
