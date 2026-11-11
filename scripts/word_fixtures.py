@@ -33,7 +33,7 @@ def base_doc() -> bytes:
     return buf.getvalue()
 
 
-def main(out_dir: str):
+def main(out_dir: str) -> None:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     data = base_doc()

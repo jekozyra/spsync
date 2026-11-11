@@ -11,11 +11,11 @@ from spsync.reader import join_items, load_document, read_items
 FIX = Path(__file__).parent / "fixtures"
 
 
-def body(data):
+def body(data: bytes) -> bytes:
     return etree.tostring(load_document(data).element.body, method="c14n")
 
 
-def test_word_doc_noop_and_threading():
+def test_word_doc_noop_and_threading() -> None:
     data = (FIX / "word-saved.docx").read_bytes()
     items = read_items(data)
     md = join_items(items)
@@ -25,7 +25,7 @@ def test_word_doc_noop_and_threading():
     assert not rep.changed and body(out) == body(data)
 
 
-def test_word_doc_edit_keeps_link_and_formatting():
+def test_word_doc_edit_keeps_link_and_formatting() -> None:
     data = (FIX / "word-saved.docx").read_bytes()
     items = read_items(data)
     md = join_items(items).replace("now edited", "now revised")
@@ -35,14 +35,14 @@ def test_word_doc_edit_keeps_link_and_formatting():
     assert "**important** and *subtle* text, now revised with a [link](https://example.com)." in md2
 
 
-def test_word_suggestions_render_as_marks():
+def test_word_suggestions_render_as_marks() -> None:
     md = join_items(read_items((FIX / "word-suggest.docx").read_bytes()))
     assert "==Third bullet==" in md
 
 
-def test_pair_hunk_prefers_similar_blocks():
+def test_pair_hunk_prefers_similar_blocks() -> None:
     class B:
-        def __init__(self, md):
+        def __init__(self, md: str) -> None:
             self.md = md
 
     ops = pair_hunk([B("## Details")], [B("\t- Nested bullet"), B("- Third"), B("### Details")])
