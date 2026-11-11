@@ -70,98 +70,141 @@ def _callout(kind: str, fold: str, header: str, body: list[str]) -> PItem:
     return PItem(t="newcomment", md=md, re=int(m_re.group(1)) if m_re else None, text=text)
 
 
+# A block parser takes the lines and the index of a non-blank line. It returns None when the block does not
+# start there, or the parsed item (None for a horizontal rule, which has no item) and the index after the block.
+Parsed = tuple[PItem | None, int]
+
+
+def _fence_block(lines: list[str], i: int) -> Parsed | None:
+    m = FENCE.match(lines[i].rstrip())
+    if not m:
+        return None
+    fence = m.group(1)
+    j = i + 1
+    while j < len(lines) and not lines[j].startswith(fence):
+        j += 1
+    code = lines[i + 1 : j]
+    raw = lines[i : j + 1]
+    return PItem(t="block", md="\n".join(x.rstrip() for x in raw), kind="code", content="\n".join(code)), j + 1
+
+
+def _callout_block(lines: list[str], i: int) -> Parsed | None:
+    m = CALLOUT.match(lines[i].rstrip())
+    if not m:
+        return None
+    body_lines = []
+    j = i + 1
+    while j < len(lines) and lines[j].startswith(">") and not CALLOUT.match(lines[j]):
+        body_lines.append(lines[j][1:].removeprefix(" ").rstrip())
+        j += 1
+    while body_lines and not body_lines[-1]:
+        body_lines.pop()
+    return _callout(m.group(1), m.group(2), m.group(3).strip(), body_lines), j
+
+
+def _quote_block(lines: list[str], i: int) -> Parsed | None:
+    if not lines[i].startswith(">"):
+        return None
+    raw = []
+    j = i
+    while j < len(lines) and lines[j].startswith(">") and not CALLOUT.match(lines[j]):
+        raw.append(lines[j].rstrip())
+        j += 1
+    content = "\n".join(re.sub(r"^>\s?", "", x) for x in raw)
+    return PItem(t="block", md="\n".join(raw), kind="quote", content=content), j
+
+
+def _private_block(lines: list[str], i: int) -> Parsed | None:
+    """A `%% ... %%` block. The patcher never uploads it."""
+    line = lines[i].rstrip()
+    if not line.startswith("%%"):
+        return None
+    j = i
+    raw = [line]
+    while not (len(raw[-1].rstrip()) >= 4 and raw[-1].rstrip().endswith("%%")) and j + 1 < len(lines):
+        j += 1
+        raw.append(lines[j].rstrip())
+    return PItem(t="block", md="\n".join(raw), kind="raw"), j + 1
+
+
+def _heading_block(lines: list[str], i: int) -> Parsed | None:
+    line = lines[i].rstrip()
+    m = HEADING.match(line)
+    if not m:
+        return None
+    return PItem(t="block", md=line, kind=f"h{len(m.group(1))}", content=m.group(2).strip()), i + 1
+
+
+def _table_block(lines: list[str], i: int) -> Parsed | None:
+    if not lines[i].startswith("|"):
+        return None
+    raw = []
+    j = i
+    while j < len(lines) and lines[j].startswith("|"):
+        raw.append(lines[j].rstrip())
+        j += 1
+    return PItem(t="block", md="\n".join(raw), kind="table"), j
+
+
+def _rule_block(lines: list[str], i: int) -> Parsed | None:
+    return (None, i + 1) if HR.match(lines[i].rstrip()) else None
+
+
+def _list_block(lines: list[str], i: int) -> Parsed | None:
+    line = lines[i].rstrip()
+    m = LIST.match(line)
+    if not m:
+        return None
+    raw = [line]
+    content = [m.group(3)]
+    j = i + 1
+    while j < len(lines) and lines[j].strip() and lines[j][:1] in (" ", "\t") and not LIST.match(lines[j]):
+        raw.append(lines[j].rstrip())
+        content.append(lines[j].strip())
+        j += 1
+    kind = "ul" if m.group(2) in "-*+" else "ol"
+    item = PItem(t="block", md="\n".join(raw), kind=kind, level=_level(m.group(1)), content="\n".join(content))
+    return item, j
+
+
+def _paragraph_block(lines: list[str], i: int) -> Parsed:
+    raw = [lines[i].rstrip()]
+    j = i + 1
+    while j < len(lines) and lines[j].strip() and not _starts_block(lines[j]) and not HR.match(lines[j]):
+        raw.append(lines[j].rstrip())
+        j += 1
+    return PItem(t="block", md="\n".join(raw), kind="p", content="\n".join(x.strip() for x in raw)), j
+
+
+# Order matters: a callout is also a quote, and a paragraph matches anything.
+_BLOCK_PARSERS = (
+    _fence_block,
+    _callout_block,
+    _quote_block,
+    _private_block,
+    _heading_block,
+    _table_block,
+    _rule_block,
+    _list_block,
+    _paragraph_block,
+)
+
+
 def parse_body(body: str) -> list[PItem]:
     lines = body.replace("\r\n", "\n").split("\n")
     items: list[PItem] = []
     i = 0
-    n = len(lines)
-    while i < n:
-        line = lines[i].rstrip()
-        if not line.strip():
+    while i < len(lines):
+        if not lines[i].strip():
             i += 1
             continue
-        m = FENCE.match(line)
-        if m:
-            fence = m.group(1)
-            j = i + 1
-            while j < n and not lines[j].startswith(fence):
-                j += 1
-            code = lines[i + 1 : j]
-            raw = lines[i : j + 1]
-            items.append(PItem(t="block", md="\n".join(x.rstrip() for x in raw), kind="code", content="\n".join(code)))
-            i = j + 1
-            continue
-        m = CALLOUT.match(line)
-        if m:
-            body_lines = []
-            j = i + 1
-            while j < n and lines[j].startswith(">") and not CALLOUT.match(lines[j]):
-                b = lines[j][1:]
-                body_lines.append((b.removeprefix(" ")).rstrip())
-                j += 1
-            while body_lines and not body_lines[-1]:
-                body_lines.pop()
-            items.append(_callout(m.group(1), m.group(2), m.group(3).strip(), body_lines))
-            i = j
-            continue
-        if line.startswith(">"):
-            raw = []
-            j = i
-            while j < n and lines[j].startswith(">") and not CALLOUT.match(lines[j]):
-                raw.append(lines[j].rstrip())
-                j += 1
-            content = "\n".join(re.sub(r"^>\s?", "", x) for x in raw)
-            items.append(PItem(t="block", md="\n".join(raw), kind="quote", content=content))
-            i = j
-            continue
-        if line.startswith("%%"):
-            j = i
-            raw = [line]
-            while not (len(raw[-1].rstrip()) >= 4 and raw[-1].rstrip().endswith("%%")) and j + 1 < n:
-                j += 1
-                raw.append(lines[j].rstrip())
-            items.append(PItem(t="block", md="\n".join(raw), kind="raw"))
-            i = j + 1
-            continue
-        m = HEADING.match(line)
-        if m:
-            items.append(PItem(t="block", md=line, kind=f"h{len(m.group(1))}", content=m.group(2).strip()))
-            i += 1
-            continue
-        if line.startswith("|"):
-            raw = []
-            j = i
-            while j < n and lines[j].startswith("|"):
-                raw.append(lines[j].rstrip())
-                j += 1
-            items.append(PItem(t="block", md="\n".join(raw), kind="table"))
-            i = j
-            continue
-        if HR.match(line):
-            i += 1
-            continue
-        m = LIST.match(line)
-        if m:
-            raw = [line]
-            content = [m.group(3)]
-            j = i + 1
-            while j < n and lines[j].strip() and lines[j][:1] in (" ", "\t") and not LIST.match(lines[j]):
-                raw.append(lines[j].rstrip())
-                content.append(lines[j].strip())
-                j += 1
-            kind = "ul" if m.group(2) in "-*+" else "ol"
-            items.append(
-                PItem(t="block", md="\n".join(raw), kind=kind, level=_level(m.group(1)), content="\n".join(content))
-            )
-            i = j
-            continue
-        raw = [line]
-        j = i + 1
-        while j < n and lines[j].strip() and not _starts_block(lines[j]) and not HR.match(lines[j]):
-            raw.append(lines[j].rstrip())
-            j += 1
-        items.append(PItem(t="block", md="\n".join(raw), kind="p", content="\n".join(x.strip() for x in raw)))
-        i = j
+        for parse in _BLOCK_PARSERS:
+            found = parse(lines, i)
+            if found is not None:
+                item, i = found
+                if item is not None:
+                    items.append(item)
+                break
     return items
 
 

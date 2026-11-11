@@ -49,14 +49,14 @@ class Binding:
 
 
 class Store:
-    def __init__(self, vault: Path):
+    def __init__(self, vault: Path) -> None:
         self.vault = vault
         self.root = vault / STATE
 
     def _dir(self, ref: str) -> Path:
         return self.root / hashlib.sha1(ref.encode()).hexdigest()[:16]
 
-    def save(self, b: Binding, base_docx: bytes):
+    def save(self, b: Binding, base_docx: bytes) -> None:
         d = self._dir(b.ref)
         d.mkdir(parents=True, exist_ok=True)
         (d / "base.docx").write_bytes(base_docx)
@@ -77,7 +77,7 @@ class Store:
             out.append(Binding.from_json(json.loads(meta.read_text())))
         return out
 
-    def remove(self, ref: str):
+    def remove(self, ref: str) -> None:
         d = self._dir(ref)
         for f in d.glob("*"):
             f.unlink()

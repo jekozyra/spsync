@@ -2,48 +2,29 @@
 
 from __future__ import annotations
 
-import json
-import os
 import sys
 from pathlib import Path
 
 import msal
+from msal_extensions import FilePersistence, PersistedTokenCache, build_encrypted_persistence
 
-# Microsoft Graph Command Line Tools, a Microsoft-published public client. Override with
-# SPSYNC_CLIENT_ID or config.json if your tenant requires its own app registration.
-DEFAULT_CLIENT_ID = "14d82eec-204b-4c2f-b7e8-296a70dab67e"
+from . import config
+
 SCOPES = ["Files.ReadWrite.All", "Sites.Read.All", "User.Read"]
-CONFIG_DIR = Path(os.environ.get("SPSYNC_CONFIG_DIR", Path.home() / ".config" / "spsync"))
+SIGN_IN_TIMEOUT_SECONDS = 180
 
 
 class AuthError(Exception):
     pass
 
 
-def load_config() -> dict:
-    path = CONFIG_DIR / "config.json"
-    if path.exists():
-        return json.loads(path.read_text())
-    return {}
-
-
-def save_config(cfg: dict):
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    path = CONFIG_DIR / "config.json"
-    path.write_text(json.dumps(cfg, indent=2))
-    path.chmod(0o600)
-
-
-def _cache():
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    location = str(CONFIG_DIR / "token_cache.bin")
+def _cache() -> PersistedTokenCache:
+    """Keep tokens in the macOS Keychain, or in a private file when the Keychain is unavailable."""
+    config.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    location = str(config.CONFIG_DIR / "token_cache.bin")
     try:
-        from msal_extensions import PersistedTokenCache, build_encrypted_persistence
-
         return PersistedTokenCache(build_encrypted_persistence(location))
-    except Exception as exc:  # noqa: BLE001 - fall back to a private file cache
-        from msal_extensions import FilePersistence, PersistedTokenCache
-
+    except (OSError, RuntimeError) as exc:
         print(f"spsync: keychain unavailable ({exc}); using a private file token cache.", file=sys.stderr)
         persistence = FilePersistence(location)
         cache = PersistedTokenCache(persistence)
@@ -52,17 +33,16 @@ def _cache():
 
 
 class Auth:
-    def __init__(self):
-        cfg = load_config()
-        self.client_id = os.environ.get("SPSYNC_CLIENT_ID") or cfg.get("client_id") or DEFAULT_CLIENT_ID
-        tenant = os.environ.get("SPSYNC_TENANT") or cfg.get("tenant") or "organizations"
+    def __init__(self) -> None:
+        self.client_id = config.client_id()
+        tenant = config.tenant()
         self.app = msal.PublicClientApplication(
             self.client_id,
             authority=f"https://login.microsoftonline.com/{tenant}",
             token_cache=_cache(),
         )
 
-    def account(self):
+    def account(self) -> dict | None:
         accounts = self.app.get_accounts()
         return accounts[0] if accounts else None
 
@@ -79,7 +59,9 @@ class Auth:
                 file=sys.stderr,
                 flush=True,
             )
-            result = self.app.acquire_token_interactive(scopes=SCOPES, prompt="select_account", timeout=180)
+            result = self.app.acquire_token_interactive(
+                scopes=SCOPES, prompt="select_account", timeout=SIGN_IN_TIMEOUT_SECONDS
+            )
         if "access_token" not in result:
             raise AuthError(result.get("error_description") or result.get("error") or "Sign-in failed.")
         return result
@@ -93,6 +75,6 @@ class Auth:
             raise AuthError("Session expired. Run: spsync login")
         return result["access_token"]
 
-    def logout(self):
+    def logout(self) -> None:
         for acct in self.app.get_accounts():
             self.app.remove_account(acct)
