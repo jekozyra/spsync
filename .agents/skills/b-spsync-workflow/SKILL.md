@@ -121,11 +121,15 @@ Follow [`CODING_STANDARDS.md`](../../../CODING_STANDARDS.md) for mandatory test 
 ```bash
 uv run ruff format --check
 uv run ruff check
+uv run ty check
+uv run anti-slop-python src tests
 uv run pytest
+pnpm -C obsidian-plugin run format:check
+pnpm -C obsidian-plugin run lint
 pnpm -C obsidian-plugin run build
 ```
 
-Run the plugin build only when `obsidian-plugin/` changes. When a change affects how Word reads or saves a document, also check the generated fixtures in Word for Mac with `scripts/word_fixtures.py` and `scripts/word_check.applescript`.
+The lefthook pre-commit hook runs the same checks. Run the plugin scripts only when `obsidian-plugin/` changes. When a change affects how Word reads or saves a document, also check the generated fixtures in Word for Mac with `scripts/word_fixtures.py` and `scripts/word_check.applescript`.
 
 ## Push, PR, and Stacking
 
