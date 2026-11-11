@@ -7,12 +7,14 @@ import json
 import subprocess
 import sys
 import time
+from dataclasses import asdict
 from pathlib import Path
 from urllib.parse import unquote
 
 from . import config
 from .auth import Auth, AuthError
 from .core import Session, SyncError
+from .doctor import SetupEnvironment, complete, run_checks
 from .graph import Graph, GraphError
 from .local import LOCAL, WORD, backend
 from .mdparse import split_frontmatter
@@ -22,6 +24,7 @@ FILE_URL_PREFIX = "file://"
 WATCH_TICK_SECONDS = 5
 EXIT_ERROR = 1
 EXIT_CONFLICT = 2
+EXIT_SETUP_INCOMPLETE = 3
 EXIT_INTERRUPTED = 130
 
 
@@ -55,11 +58,28 @@ def cmd_mode(args: argparse.Namespace) -> None:
         cfg["roots"] = [str(Path(r).expanduser()) for r in args.root]
         config.save_config(cfg)
     b = backend()
+    if args.json:
+        print(json.dumps({"backend": b.mode, "author": b.local.author, "roots": [str(r) for r in b.local.roots]}))
+        return
     print(f"backend: {b.mode}")
     if b.mode == LOCAL:
         print(f"author:  {b.local.author}")
         for r in b.local.roots:
             print(f"root:    {r}")
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    checks = run_checks(SetupEnvironment.from_system())
+    ok = complete(checks)
+    if args.json:
+        print(json.dumps({"complete": ok, "checks": [asdict(c) for c in checks]}))
+    else:
+        for c in checks:
+            optional = "" if c.required or c.ok else " (optional)"
+            print(f"{'pass' if c.ok else 'fail'}  {c.name}{optional}: {c.detail}")
+            if c.fix:
+                print(f"      Fix: {c.fix}")
+    return 0 if ok else EXIT_SETUP_INCOMPLETE
 
 
 def cmd_logout(args: argparse.Namespace) -> None:
@@ -243,8 +263,12 @@ def _add_account_commands(sub: argparse._SubParsersAction) -> None:
     s.add_argument("mode", nargs="?", choices=["local", "graph"])
     s.add_argument("--author", help="Name used on comments and tracked changes in local mode")
     s.add_argument("--root", action="append", help="Folder to search for synced docs (repeatable)")
+    s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_mode)
     sub.add_parser("whoami", help="Show the signed-in account").set_defaults(fn=cmd_whoami)
+    s = sub.add_parser("doctor", help="Check first-run setup and show how to fix each problem")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_doctor)
 
 
 def _add_discovery_commands(sub: argparse._SubParsersAction) -> None:
