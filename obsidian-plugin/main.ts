@@ -33,12 +33,43 @@ const DEFAULTS: Settings = {
   folder: "SharePoint",
 };
 
+/** One search result, as printed by `spsync search --json` and `spsync recent --json`. */
 interface Hit {
   ref: string;
   name: string;
   webUrl: string;
   modified: string;
   by: string;
+}
+
+// Frontmatter keys that `spsync pull` writes.
+const FM_REF = "spsync";
+const FM_URL = "sharepoint";
+const WORD_REF_PREFIX = "word:";
+
+// `spsync sync` exits with this code when a note has conflicts; the output still describes the result.
+const EXIT_CONFLICT = 2;
+const MS_PER_SECOND = 1000;
+const MS_PER_MINUTE = 60 * MS_PER_SECOND;
+const CLI_TIMEOUT_MS = 5 * MS_PER_MINUTE;
+const CLI_MAX_OUTPUT_BYTES = 20 * 1024 * 1024;
+
+// Obsidian indexes a new note shortly after the CLI writes it.
+const INDEX_WAIT_MS = 300;
+const STICKY_NOTICE = 0;
+const RESULT_NOTICE_MS = 6000;
+const CREATED_NOTICE_MS = 8000;
+const ERROR_NOTICE_MS = 10000;
+const MIN_PUSH_IDLE_SECONDS = 5;
+const MIN_PULL_INTERVAL_MINUTES = 1;
+const CALLOUT_HEADER = /^>\s*\[!(comment|reply)\]/i;
+
+function notify(message: string, durationMs?: number): Notice {
+  return new Notice(message, durationMs);
+}
+
+function errorText(cause: unknown): string {
+  return cause instanceof Error ? cause.message : String(cause);
 }
 
 export default class SpsyncPlugin extends Plugin {
@@ -54,42 +85,96 @@ export default class SpsyncPlugin extends Plugin {
 
     this.addRibbonIcon("refresh-cw", "Sync with SharePoint", () => this.syncActive());
 
-    this.addCommand({ id: "search", name: "Find and open a SharePoint document", callback: () => new QueryModal(this.app, this).open() });
-    this.addCommand({ id: "recent", name: "Open a recent SharePoint document", callback: () => this.pickRecent() });
-    this.addCommand({ id: "pull-link", name: "Open a SharePoint link", callback: () => new LinkModal(this.app, this).open() });
-    this.addCommand({ id: "sync", name: "Sync this note", checkCallback: (c) => this.linked(c, () => this.syncActive()) });
-    this.addCommand({ id: "push-suggest", name: "Send edits as tracked changes", checkCallback: (c) => this.linked(c, () => this.syncActive(true)) });
-    this.addCommand({ id: "sync-all", name: "Sync all linked notes", callback: () => this.syncAll(true) });
-    this.addCommand({ id: "open-web", name: "Open this document in SharePoint", checkCallback: (c) => this.linked(c, () => this.openWeb()) });
-    this.addCommand({ id: "create", name: "Create a Word document from this note", callback: () => this.createFromActive() });
-    this.addCommand({ id: "comment", name: "Comment on this paragraph", editorCallback: (e) => this.insertComment(e) });
-    this.addCommand({ id: "reply", name: "Reply to this comment", editorCallback: (e) => this.insertReply(e) });
+    this.addCommand({
+      id: "search",
+      name: "Find and open a SharePoint document",
+      callback: () => new QueryModal(this.app, this).open(),
+    });
+    this.addCommand({
+      id: "recent",
+      name: "Open a recent SharePoint document",
+      callback: () => this.pickRecent(),
+    });
+    this.addCommand({
+      id: "pull-link",
+      name: "Open a SharePoint link",
+      callback: () => new LinkModal(this.app, this).open(),
+    });
+    this.addCommand({
+      id: "sync",
+      name: "Sync this note",
+      checkCallback: (c) => this.linked(c, () => this.syncActive()),
+    });
+    this.addCommand({
+      id: "push-suggest",
+      name: "Send edits as tracked changes",
+      checkCallback: (c) => this.linked(c, () => this.syncActive(true)),
+    });
+    this.addCommand({
+      id: "sync-all",
+      name: "Sync all linked notes",
+      callback: () => this.syncAll(true),
+    });
+    this.addCommand({
+      id: "open-web",
+      name: "Open this document in SharePoint",
+      checkCallback: (c) => this.linked(c, () => this.openWeb()),
+    });
+    this.addCommand({
+      id: "create",
+      name: "Create a Word document from this note",
+      callback: () => this.createFromActive(),
+    });
+    this.addCommand({
+      id: "comment",
+      name: "Comment on this paragraph",
+      editorCallback: (e) => this.insertComment(e),
+    });
+    this.addCommand({
+      id: "reply",
+      name: "Reply to this comment",
+      editorCallback: (e) => this.insertReply(e),
+    });
 
     this.addSettingTab(new SpsyncSettings(this.app, this));
 
     this.registerEvent(
       this.app.vault.on("modify", (file) => {
-        if (!this.settings.autoSync || !(file instanceof TFile) || !this.isLinked(file)) return;
+        if (!this.settings.autoSync || !(file instanceof TFile) || !this.isLinked(file)) {
+          return;
+        }
+
         const prev = this.timers.get(file.path);
-        if (prev) window.clearTimeout(prev);
+
+        if (prev) {
+          window.clearTimeout(prev);
+        }
+
         this.timers.set(
           file.path,
           window.setTimeout(() => {
             this.timers.delete(file.path);
             this.syncFile(file, this.settings.suggestByDefault, false);
-          }, this.settings.pushIdleSeconds * 1000),
+          }, this.settings.pushIdleSeconds * MS_PER_SECOND),
         );
       }),
     );
     this.registerInterval(
-      window.setInterval(() => {
-        if (this.settings.autoSync) this.syncAll(false);
-      }, Math.max(1, this.settings.pullIntervalMinutes) * 60 * 1000),
+      window.setInterval(
+        () => {
+          if (this.settings.autoSync) {
+            this.syncAll(false);
+          }
+        },
+        Math.max(MIN_PULL_INTERVAL_MINUTES, this.settings.pullIntervalMinutes) * MS_PER_MINUTE,
+      ),
     );
   }
 
   onunload() {
-    for (const t of this.timers.values()) window.clearTimeout(t);
+    for (const t of this.timers.values()) {
+      window.clearTimeout(t);
+    }
   }
 
   async saveSettings() {
@@ -99,12 +184,17 @@ export default class SpsyncPlugin extends Plugin {
   // ---- helpers ----
   vaultPath(): string {
     const a = this.app.vault.adapter;
-    if (a instanceof FileSystemAdapter) return a.getBasePath();
+
+    if (a instanceof FileSystemAdapter) {
+      return a.getBasePath();
+    }
+
     throw new Error("SharePoint Sync needs the desktop app.");
   }
 
   cli(): string {
     const p = this.settings.cliPath.trim();
+
     return p.startsWith("~") ? path.join(os.homedir(), p.slice(1)) : p;
   }
 
@@ -113,11 +203,16 @@ export default class SpsyncPlugin extends Plugin {
       execFile(
         this.cli(),
         args,
-        { cwd: this.vaultPath(), env: { ...process.env, SPSYNC_VAULT: this.vaultPath() }, maxBuffer: 20 * 1024 * 1024, timeout: 5 * 60 * 1000 },
+        {
+          cwd: this.vaultPath(),
+          env: { ...process.env, SPSYNC_VAULT: this.vaultPath() },
+          maxBuffer: CLI_MAX_OUTPUT_BYTES,
+          timeout: CLI_TIMEOUT_MS,
+        },
         (err, stdout, stderr) => {
-          if (err && (err as NodeJS.ErrnoException).code === "ENOENT") {
+          if (err && err.code === "ENOENT") {
             reject(new Error(`spsync CLI not found at ${this.cli()}. Set its path in settings.`));
-          } else if (err && !(err.code === 2)) {
+          } else if (err && err.code !== EXIT_CONFLICT) {
             reject(new Error((stderr || stdout || err.message).trim()));
           } else {
             resolve((stdout || "").trim());
@@ -127,18 +222,30 @@ export default class SpsyncPlugin extends Plugin {
     });
   }
 
+  async hits(args: string[]): Promise<Hit[]> {
+    // SAFETY: `--json` output is a list of objects with exactly the Hit keys (`_print_hits` in cli.py).
+    return JSON.parse(await this.run([...args, "--json"])) as Hit[];
+  }
+
   setStatus(text: string) {
     this.status.setText(`SharePoint: ${text}`);
   }
 
   isLinked(file: TFile): boolean {
-    return !!this.app.metadataCache.getFileCache(file)?.frontmatter?.spsync;
+    return !!this.app.metadataCache.getFileCache(file)?.frontmatter?.[FM_REF];
   }
 
   linked(checking: boolean, fn: () => void): boolean {
     const f = this.app.workspace.getActiveFile();
-    if (!f || !this.isLinked(f)) return false;
-    if (!checking) fn();
+
+    if (!f || !this.isLinked(f)) {
+      return false;
+    }
+
+    if (!checking) {
+      fn();
+    }
+
     return true;
   }
 
@@ -148,18 +255,34 @@ export default class SpsyncPlugin extends Plugin {
 
   // ---- actions ----
   async syncFile(file: TFile, suggest: boolean, loud: boolean) {
-    if (this.running.has(file.path)) return;
+    if (this.running.has(file.path)) {
+      return;
+    }
+
     this.running.add(file.path);
     this.setStatus(`syncing ${file.basename}...`);
+
     try {
       const args = ["sync", this.abs(file)];
-      if (suggest) args.push("--suggest");
+
+      if (suggest) {
+        args.push("--suggest");
+      }
+
       const out = await this.run(args);
       const quiet = /: unchanged\./.test(out);
-      if (loud || !quiet) new Notice(out, out.includes("conflict") ? 0 : 6000);
-      this.setStatus(out.includes("conflict") ? `conflict in ${file.basename}` : `synced ${new Date().toLocaleTimeString()}`);
+
+      if (loud || !quiet) {
+        notify(out, out.includes("conflict") ? STICKY_NOTICE : RESULT_NOTICE_MS);
+      }
+
+      this.setStatus(
+        out.includes("conflict")
+          ? `conflict in ${file.basename}`
+          : `synced ${new Date().toLocaleTimeString()}`,
+      );
     } catch (e) {
-      new Notice(`SharePoint sync failed: ${(e as Error).message}`, 10000);
+      notify(`SharePoint sync failed: ${errorText(e)}`, ERROR_NOTICE_MS);
       this.setStatus("error");
     } finally {
       this.running.delete(file.path);
@@ -168,100 +291,156 @@ export default class SpsyncPlugin extends Plugin {
 
   async syncActive(suggest = this.settings.suggestByDefault) {
     const f = this.app.workspace.getActiveFile();
+
     if (!f || !this.isLinked(f)) {
-      new Notice("This note is not linked to SharePoint.");
+      notify("This note is not linked to SharePoint.");
+
       return;
     }
+
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-    if (view) await view.save();
+
+    if (view) {
+      await view.save();
+    }
+
     await this.syncFile(f, suggest, true);
   }
 
   isWord(file: TFile): boolean {
-    return String(this.app.metadataCache.getFileCache(file)?.frontmatter?.spsync ?? "").startsWith("word:");
+    return String(
+      this.app.metadataCache.getFileCache(file)?.frontmatter?.[FM_REF] ?? "",
+    ).startsWith(WORD_REF_PREFIX);
   }
 
   async syncAll(loud: boolean) {
     for (const f of this.app.vault.getMarkdownFiles()) {
       // Word-backed notes open Word to check for changes, so only sync them on request.
-      if (!loud && this.isWord(f)) continue;
-      if (this.isLinked(f) && !this.timers.has(f.path)) await this.syncFile(f, this.settings.suggestByDefault, loud);
+      if (!loud && this.isWord(f)) {
+        continue;
+      }
+
+      if (this.isLinked(f) && !this.timers.has(f.path)) {
+        // Each sync runs the CLI against the vault state; run them one at a time.
+        // oxlint-disable-next-line no-await-in-loop
+        await this.syncFile(f, this.settings.suggestByDefault, loud);
+      }
     }
   }
 
   async pull(ref: string) {
     this.setStatus("downloading...");
+
     try {
       const out = await this.run(["pull", ref, "--vault", this.vaultPath()]);
       const m = out.match(/Pulled to (.+)$/m);
+
       if (m) {
         const rel = path.relative(this.vaultPath(), m[1].trim());
-        await new Promise((r) => window.setTimeout(r, 300));
+        await new Promise((r) => window.setTimeout(r, INDEX_WAIT_MS));
         const file = this.app.vault.getAbstractFileByPath(rel);
-        if (file instanceof TFile) await this.app.workspace.getLeaf(false).openFile(file);
+
+        if (file instanceof TFile) {
+          await this.app.workspace.getLeaf(false).openFile(file);
+        }
       }
+
       this.setStatus("idle");
     } catch (e) {
-      new Notice(`Could not open document: ${(e as Error).message}`, 10000);
+      notify(`Could not open document: ${errorText(e)}`, ERROR_NOTICE_MS);
       this.setStatus("error");
     }
   }
 
   async search(query: string) {
     try {
-      const hits = JSON.parse(await this.run(["search", query, "--json"])) as Hit[];
-      if (!hits.length) return new Notice("No Word documents found.");
+      const hits = await this.hits(["search", query]);
+
+      if (!hits.length) {
+        notify("No Word documents found.");
+
+        return;
+      }
+
       new HitModal(this.app, this, hits).open();
     } catch (e) {
-      new Notice(`Search failed: ${(e as Error).message}`, 10000);
+      notify(`Search failed: ${errorText(e)}`, ERROR_NOTICE_MS);
     }
   }
 
   async pickRecent() {
     try {
-      const hits = JSON.parse(await this.run(["recent", "--json"])) as Hit[];
+      const hits = await this.hits(["recent"]);
       new HitModal(this.app, this, hits).open();
     } catch (e) {
-      new Notice(`Could not list recent documents: ${(e as Error).message}`, 10000);
+      notify(`Could not list recent documents: ${errorText(e)}`, ERROR_NOTICE_MS);
     }
   }
 
   openWeb() {
     const f = this.app.workspace.getActiveFile();
-    const url = f && this.app.metadataCache.getFileCache(f)?.frontmatter?.sharepoint;
-    if (url) window.open(url);
+    const url = f && this.app.metadataCache.getFileCache(f)?.frontmatter?.[FM_URL];
+
+    if (url) {
+      window.open(url);
+    }
   }
 
   async createFromActive() {
     const f = this.app.workspace.getActiveFile();
-    if (!f) return;
-    if (this.isLinked(f)) return new Notice("This note is already linked to SharePoint.");
-    new TextModal(this.app, "Synced folder path (or 'me' for your OneDrive root)", async (folder) => {
-      try {
-        const out = await this.run(["new", this.abs(f), "--folder", folder]);
-        new Notice(out, 8000);
-      } catch (e) {
-        new Notice(`Could not create document: ${(e as Error).message}`, 10000);
-      }
-    }).open();
+
+    if (!f) {
+      return;
+    }
+
+    if (this.isLinked(f)) {
+      notify("This note is already linked to SharePoint.");
+
+      return;
+    }
+
+    new TextModal(
+      this.app,
+      "Synced folder path (or 'me' for your OneDrive root)",
+      async (folder) => {
+        try {
+          const out = await this.run(["new", this.abs(f), "--folder", folder]);
+          notify(out, CREATED_NOTICE_MS);
+        } catch (e) {
+          notify(`Could not create document: ${errorText(e)}`, ERROR_NOTICE_MS);
+        }
+      },
+    ).open();
   }
 
   insertComment(editor: Editor) {
     let line = editor.getCursor().line;
     const last = editor.lastLine();
-    while (line < last && editor.getLine(line + 1).trim() !== "") line++;
+
+    while (line < last && editor.getLine(line + 1).trim() !== "") {
+      line += 1;
+    }
+
     // Skip past existing comment callouts attached to this block.
     let next = line + 1;
+
     while (next <= last) {
       const l = editor.getLine(next);
-      if (l.trim() === "" && next + 1 <= last && /^>\s*\[!(comment|reply)\]/i.test(editor.getLine(next + 1))) {
+
+      if (l.trim() === "" && next + 1 <= last && CALLOUT_HEADER.test(editor.getLine(next + 1))) {
         next += 1;
-        while (next <= last && editor.getLine(next).startsWith(">")) next++;
+
+        while (next <= last && editor.getLine(next).startsWith(">")) {
+          next += 1;
+        }
+
         line = next - 1;
         continue;
       }
+
       break;
     }
+
     const end = editor.getLine(line).length;
     editor.replaceRange("\n\n> [!comment] ", { line, ch: end });
     editor.setCursor({ line: line + 2, ch: "> [!comment] ".length });
@@ -269,16 +448,31 @@ export default class SpsyncPlugin extends Plugin {
 
   insertReply(editor: Editor) {
     let line = editor.getCursor().line;
-    while (line > 0 && !/^>\s*\[!(comment|reply)\]/i.test(editor.getLine(line)) && editor.getLine(line).startsWith(">")) line--;
+
+    while (
+      line > 0 &&
+      !CALLOUT_HEADER.test(editor.getLine(line)) &&
+      editor.getLine(line).startsWith(">")
+    ) {
+      line -= 1;
+    }
+
     const header = editor.getLine(line);
     const m = header.match(/id:(\d+)/);
-    if (!/^>\s*\[!(comment|reply)\]/i.test(header) || !m) {
-      new Notice("Put the cursor inside an existing comment to reply.");
+
+    if (!CALLOUT_HEADER.test(header) || !m) {
+      notify("Put the cursor inside an existing comment to reply.");
+
       return;
     }
+
     const parent = header.match(/re:(\d+)/)?.[1] ?? m[1];
     let end = line;
-    while (end + 1 <= editor.lastLine() && editor.getLine(end + 1).startsWith(">")) end++;
+
+    while (end + 1 <= editor.lastLine() && editor.getLine(end + 1).startsWith(">")) {
+      end += 1;
+    }
+
     const text = `\n\n> [!reply] re:${parent}\n> `;
     editor.replaceRange(text, { line: end, ch: editor.getLine(end).length });
     editor.setCursor({ line: end + 3, ch: 2 });
@@ -286,7 +480,11 @@ export default class SpsyncPlugin extends Plugin {
 }
 
 class TextModal extends Modal {
-  constructor(app: App, private prompt: string, private onSubmit: (v: string) => void) {
+  constructor(
+    app: App,
+    private prompt: string,
+    private onSubmit: (v: string) => void,
+  ) {
     super(app);
   }
   onOpen() {
@@ -319,12 +517,17 @@ class LinkModal extends TextModal {
 }
 
 class HitModal extends SuggestModal<Hit> {
-  constructor(app: App, private plugin: SpsyncPlugin, private hits: Hit[]) {
+  constructor(
+    app: App,
+    private plugin: SpsyncPlugin,
+    private hits: Hit[],
+  ) {
     super(app);
     this.setPlaceholder("Pick a document to open as a note");
   }
   getSuggestions(q: string): Hit[] {
     const s = q.toLowerCase();
+
     return this.hits.filter((h) => h.name.toLowerCase().includes(s));
   }
   renderSuggestion(h: Hit, el: HTMLElement) {
@@ -337,7 +540,10 @@ class HitModal extends SuggestModal<Hit> {
 }
 
 class SpsyncSettings extends PluginSettingTab {
-  constructor(app: App, private plugin: SpsyncPlugin) {
+  constructor(
+    app: App,
+    private plugin: SpsyncPlugin,
+  ) {
     super(app, plugin);
   }
   display() {
@@ -345,35 +551,56 @@ class SpsyncSettings extends PluginSettingTab {
     containerEl.empty();
     const s = this.plugin.settings;
     const save = () => this.plugin.saveSettings();
-    new Setting(containerEl).setName("spsync CLI path").setDesc("Run `spsync login` once in a terminal before using the plugin.").addText((t) =>
-      t.setValue(s.cliPath).onChange(async (v) => {
-        s.cliPath = v;
-        await save();
-      }),
-    );
-    new Setting(containerEl).setName("Sync automatically").setDesc("Push edits after you stop typing, and pull SharePoint changes on a timer.").addToggle((t) =>
-      t.setValue(s.autoSync).onChange(async (v) => {
-        s.autoSync = v;
-        await save();
-      }),
-    );
-    new Setting(containerEl).setName("Push after idle (seconds)").addText((t) =>
-      t.setValue(String(s.pushIdleSeconds)).onChange(async (v) => {
-        s.pushIdleSeconds = Math.max(5, Number(v) || DEFAULTS.pushIdleSeconds);
-        await save();
-      }),
-    );
-    new Setting(containerEl).setName("Check SharePoint every (minutes)").setDesc("Takes effect after reload.").addText((t) =>
-      t.setValue(String(s.pullIntervalMinutes)).onChange(async (v) => {
-        s.pullIntervalMinutes = Math.max(1, Number(v) || DEFAULTS.pullIntervalMinutes);
-        await save();
-      }),
-    );
-    new Setting(containerEl).setName("Send edits as tracked changes").setDesc("Recommended for other people's documents. Owners accept or reject them in Word.").addToggle((t) =>
-      t.setValue(s.suggestByDefault).onChange(async (v) => {
-        s.suggestByDefault = v;
-        await save();
-      }),
-    );
+    const add = () => new Setting(containerEl);
+    add()
+      .setName("spsync CLI path")
+      .setDesc("Run `spsync login` once in a terminal before using the plugin.")
+      .addText((t) =>
+        t.setValue(s.cliPath).onChange(async (v) => {
+          s.cliPath = v;
+          await save();
+        }),
+      );
+    add()
+      .setName("Sync automatically")
+      .setDesc("Push edits after you stop typing, and pull SharePoint changes on a timer.")
+      .addToggle((t) =>
+        t.setValue(s.autoSync).onChange(async (v) => {
+          s.autoSync = v;
+          await save();
+        }),
+      );
+    add()
+      .setName("Push after idle (seconds)")
+      .addText((t) =>
+        t.setValue(String(s.pushIdleSeconds)).onChange(async (v) => {
+          s.pushIdleSeconds = Math.max(
+            MIN_PUSH_IDLE_SECONDS,
+            Number(v) || DEFAULTS.pushIdleSeconds,
+          );
+          await save();
+        }),
+      );
+    add()
+      .setName("Check SharePoint every (minutes)")
+      .setDesc("Takes effect after reload.")
+      .addText((t) =>
+        t.setValue(String(s.pullIntervalMinutes)).onChange(async (v) => {
+          s.pullIntervalMinutes = Math.max(
+            MIN_PULL_INTERVAL_MINUTES,
+            Number(v) || DEFAULTS.pullIntervalMinutes,
+          );
+          await save();
+        }),
+      );
+    add()
+      .setName("Send edits as tracked changes")
+      .setDesc("Recommended for other people's documents. Owners accept or reject them in Word.")
+      .addToggle((t) =>
+        t.setValue(s.suggestByDefault).onChange(async (v) => {
+          s.suggestByDefault = v;
+          await save();
+        }),
+      );
   }
 }
