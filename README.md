@@ -14,7 +14,7 @@ spsync reaches documents through one of three backends:
 
 ## Setup
 
-You need macOS, [uv](https://docs.astral.sh/uv/) with Python 3.13, and either the OneDrive app (local backend) or Word for Mac (word backend). The Obsidian plugin also needs Node and pnpm.
+You need macOS, [uv](https://docs.astral.sh/uv/) with Python 3.13, and either the OneDrive app (local backend) or Word for Mac (word backend). The Obsidian plugin also needs Node 23.6 or later and pnpm.
 
 From a clone of this repo, install the CLI:
 
@@ -33,7 +33,7 @@ spsync mode graph
 Build the Obsidian plugin and copy it into your vault:
 
 ```sh
-cd obsidian-plugin && pnpm install && pnpm run build
+cd obsidian-plugin && pnpm install --frozen-lockfile && pnpm run build
 mkdir -p <vault>/.obsidian/plugins/spsync
 cp main.js manifest.json <vault>/.obsidian/plugins/spsync/
 ```
@@ -98,10 +98,17 @@ The plugin's settings tab sets the CLI path, automatic sync, the idle and pollin
 
 | Path | What lives here |
 |---|---|
-| `src/spsync/` | The CLI: `cli.py` commands, `reader.py`/`patch.py` docx parsing and patching, `local.py`/`word.py`/`graph.py` backends |
+| `src/spsync/` | The CLI: `cli.py` commands, `config.py` settings, `reader/` and `patch/` docx parsing and patching, `local.py`, `word/`, and `graph.py` backends |
 | `obsidian-plugin/` | The Obsidian plugin, which shells out to the CLI |
 | `scripts/` | Helpers that generate Word fixtures and check them in Word |
 | `tests/` | pytest suite and `.docx` fixtures |
+
+Install the git hooks once. The pre-commit hook runs ruff, ty, anti-slop-python, pytest, and the plugin's Oxfmt, Oxlint, and build checks. [`CODING_STANDARDS.md`](CODING_STANDARDS.md) lists every check.
+
+```sh
+uv sync --locked
+uv run lefthook install
+```
 
 To run the tests and check fixtures against real Word:
 
