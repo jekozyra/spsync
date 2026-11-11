@@ -58,6 +58,7 @@ src/spsync/
   word/          Backend that drives the signed-in Word app: script, app, text, ops, planner, backend
   graph.py       Backend that calls Microsoft Graph
   auth.py        Microsoft identity sign-in and the token cache
+  doctor.py      First-run setup checks for `spsync doctor`: OneDrive, Word, Automation, author
 ```
 
 Follow these rules for the Python source:
@@ -124,10 +125,11 @@ note.md + block map --push--> patched .docx --upload--> remote .docx
 
 ```text
 cli.py --> core.py --> SessionBackend protocol <-- Router (local.py) --> local, word/, graph.py
-              |
-              `--> mdparse.py, reader/, patch/ --> inline.py, ooxml.py
+   |          |
+   |          `--> mdparse.py, reader/, patch/ --> inline.py, ooxml.py
+   `--> doctor.py --> local.py, word/
 
-config.py <-- cli.py, auth.py, local.py
+config.py <-- cli.py, auth.py, local.py, doctor.py
 ```
 
 - Modules depend only in the direction of the illustration. A docx transform does not import `core.py`, `cli.py`, or a backend.
