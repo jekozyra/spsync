@@ -52,11 +52,11 @@ Use conventional commits: `<type>(<scope>): <description>`. The scope is optiona
 
 - **Types:** `feat`, `fix`, `refactor`, `docs`, `test`, `build`, `chore`, `perf`, `revert`.
 - **Scopes:**
-  - `cli` for `src/spsync/cli.py`.
+  - `cli` for `src/spsync/cli.py` and `config.py`.
   - `core` for `core.py`, `store.py`, and `mdparse.py`: pull, push, sync, merge, and note parsing.
-  - `reader` for `reader.py` and `inline.py`: docx to Markdown.
-  - `patch` for `patch.py` and `ooxml.py`: Markdown changes written back into the docx.
-  - `local`, `word`, and `graph` for the backends. `graph` also covers `auth.py`.
+  - `reader` for `reader/` and `inline.py`: docx to Markdown.
+  - `patch` for `patch/` and `ooxml.py`: Markdown changes written back into the docx.
+  - `local`, `word`, and `graph` for the backends: `local.py`, `word/`, and `graph.py`. `graph` also covers `auth.py`.
   - `plugin` for `obsidian-plugin/`.
   - `docs` for the README and repository prose.
   - `tooling` for `pyproject.toml`, `scripts/`, `.github/`, and agent files.

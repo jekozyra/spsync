@@ -6,7 +6,7 @@ These standards apply to code, tests, fixtures, package structure, dependencies,
 
 - Use Python 3.13 and uv for the command-line tool. Do not introduce Poetry, pip-tools, or a second Python environment manager.
 - Use ruff for Python linting and formatting, `ty` for Python type checking, and `anti-slop-python` for the Python architectural rules. Do not add black, isort, flake8, pylint, or mypy.
-- Use TypeScript, pnpm, and esbuild for the Obsidian plugin.
+- Use TypeScript, pnpm, and esbuild for the Obsidian plugin. The plugin tooling needs Node 23.6 or later, which runs `esbuild.ts` directly.
 - Write scripts and tool configuration in TypeScript, such as `esbuild.ts` and `oxlint.config.ts`. Do not add `.mjs` files.
 - Write relative TypeScript imports with the source file extension, such as `./settings.ts`.
 - Use Oxlint, Oxfmt, and the vendored anti-slop rules for TypeScript. Do not add ESLint, Prettier, or Biome.
@@ -46,15 +46,16 @@ The Python package uses this structure:
 ```text
 src/spsync/
   cli.py         Command parsing and output; no sync logic
+  config.py      SPSYNC_* environment variables and config.json
   core.py        Pull, push, sync, and create; three-way merge by paragraph
   store.py       Per-vault state under <vault>/.spsync: the pulled .docx and its block map
   mdparse.py     Obsidian note to blocks and comment callouts
-  reader.py      .docx to a block model and Obsidian Markdown
   inline.py      Inline Markdown to Word run segments, and the reverse
-  patch.py       Note edits applied onto the original .docx
   ooxml.py       OOXML helpers shared by the reader and the patcher
-  local.py       Backend for files that the OneDrive app syncs, and backend selection
-  word.py        Backend that drives the signed-in Word app
+  reader/        .docx to blocks and Markdown: parts, paragraphs, comments, items
+  patch/         Note edits applied onto the original .docx: patcher, runs, tables, comments, diff
+  local.py       Backend protocols, the OneDrive-file backend, and the Router that picks a backend per item
+  word/          Backend that drives the signed-in Word app: script, app, text, ops, planner, backend
   graph.py       Backend that calls Microsoft Graph
   auth.py        Microsoft identity sign-in and the token cache
 ```
@@ -62,8 +63,9 @@ src/spsync/
 Follow these rules for the Python source:
 
 - Keep `cli.py` to argument parsing, configuration lookup, and output. Put behavior that the watcher or the plugin also needs in `core.py`.
-- Keep the docx transforms (`reader.py`, `inline.py`, `patch.py`, and `ooxml.py`) free of network, file-system, and subprocess calls. They take bytes or parsed documents and return results.
-- Every backend implements the `Backend` protocol in `local.py`. `core.py` depends on the protocol, not on a concrete backend.
+- Keep the docx transforms (`reader/`, `inline.py`, `patch/`, and `ooxml.py`) free of network, file-system, and subprocess calls. They take bytes or parsed documents and return results.
+- Every backend implements the `Backend` protocol in `local.py`. `core.py` depends on the `SessionBackend` protocol, not on a concrete backend.
+- A package keeps the import path of the module that it replaced. Its `__init__.py` is the public interface and lists it in `__all__`.
 - Split a module by responsibility when it grows past the `anti-slop-python` module-size limit. Turn the module into a package with the same import path when callers import it by name.
 
 ## Plugin source structure
@@ -121,9 +123,11 @@ note.md + block map --push--> patched .docx --upload--> remote .docx
 ## Dependency direction and composition
 
 ```text
-cli.py --> core.py --> Backend protocol <-- local.py, word.py, graph.py
+cli.py --> core.py --> SessionBackend protocol <-- Router (local.py) --> local, word/, graph.py
               |
-              `--> mdparse.py, reader.py, patch.py --> inline.py, ooxml.py
+              `--> mdparse.py, reader/, patch/ --> inline.py, ooxml.py
+
+config.py <-- cli.py, auth.py, local.py
 ```
 
 - Modules depend only in the direction of the illustration. A docx transform does not import `core.py`, `cli.py`, or a backend.
@@ -133,7 +137,7 @@ cli.py --> core.py --> Backend protocol <-- local.py, word.py, graph.py
 
 ## Configuration
 
-- Read `SPSYNC_*` environment variables and `~/.config/spsync/` in one configuration module. Other modules receive configuration values as arguments.
+- Read `SPSYNC_*` environment variables and `~/.config/spsync/` only in `config.py`. Other modules call its functions.
 - List every environment variable in the README configuration table.
 - Give each setting a documented default when the tool can work without it. Fail with a message that names the setting when it cannot.
 - Store tokens in the macOS Keychain through msal-extensions. Use the private file cache only when the Keychain is unavailable, and warn the user when that happens. Do not write credentials or tokens to the vault, `.spsync/`, or a configuration file.
@@ -166,8 +170,8 @@ Put each named value at the narrowest scope that owns it:
 | --------------------------------------------- | --------------------------------------------------------------- |
 | Used in one module                            | A constant at the top of that module, after the imports         |
 | Used in more than one module                  | An export from the module that owns the concept                 |
-| Part of the note format or the block map      | An export from `mdparse.py`, `reader.py`, or `store.py`         |
-| Varies between users, or is a credential      | A setting read by the configuration module, or the Keychain     |
+| Part of the note format or the block map      | An export from `mdparse.py`, `reader`, or `store.py`            |
+| Varies between users, or is a credential      | A setting read by `config.py`, or the Keychain                  |
 
 - Do not create a constants module for one value. A module that owns the value can export it instead.
 - Do not put user settings, tenant identifiers, or credentials in a constant. Use configuration.
@@ -228,7 +232,7 @@ Use real OOXML and domain names in an illustration. Keep the illustration close 
 - Add a narrow test for foundational behavior that must be correct, such as inline Markdown parsing.
 - Test through the same public interface that callers use.
 - Test invariants, error modes, no-op behavior, and identity preservation when those behaviors are part of the interface.
-- A change to `reader.py`, `inline.py`, `patch.py`, or `word.py` requires a round-trip test that proves unchanged content stays unchanged.
+- A change to `reader/`, `inline.py`, `patch/`, or `word/` requires a round-trip test that proves unchanged content stays unchanged.
 - Keep fixtures small and explicit. Use synthetic documents only. Add a `.docx` fixture saved by Word only when a generated document cannot reproduce the case, and name the Word version in the test.
 - Do not make private implementation details public only for tests.
 - Name test files `tests/test_<module>.py`, or name a file for a behavior across modules after that behavior, such as `tests/test_roundtrip.py`.
