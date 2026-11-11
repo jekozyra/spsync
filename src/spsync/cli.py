@@ -69,16 +69,20 @@ def cmd_whoami(args):
 
 def _print_hits(hits, as_json=False):
     if as_json:
-        print(json.dumps([
-            {
-                "ref": f"{(h.get('parentReference') or {}).get('driveId', '')}:{h.get('id')}",
-                "name": h.get("name"),
-                "webUrl": h.get("webUrl"),
-                "modified": (h.get("lastModifiedDateTime") or "")[:10],
-                "by": ((h.get("lastModifiedBy") or {}).get("user") or {}).get("displayName", ""),
-            }
-            for h in hits
-        ]))
+        print(
+            json.dumps(
+                [
+                    {
+                        "ref": f"{(h.get('parentReference') or {}).get('driveId', '')}:{h.get('id')}",
+                        "name": h.get("name"),
+                        "webUrl": h.get("webUrl"),
+                        "modified": (h.get("lastModifiedDateTime") or "")[:10],
+                        "by": ((h.get("lastModifiedBy") or {}).get("user") or {}).get("displayName", ""),
+                    }
+                    for h in hits
+                ]
+            )
+        )
         return
     saved = []
     for n, h in enumerate(hits, 1):
@@ -201,7 +205,9 @@ def cmd_watch(args):
     vault = _vault(args)
     s = Session.for_path(vault)
     last_remote: dict[str, float] = {}
-    print(f"Watching {s.vault} (remote every {args.interval}s, push after {args.idle}s idle). Ctrl-C to stop.", flush=True)
+    print(
+        f"Watching {s.vault} (remote every {args.interval}s, push after {args.idle}s idle). Ctrl-C to stop.", flush=True
+    )
     while True:
         for b in s.store.all():
             note = s.vault / b.note
@@ -256,7 +262,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--force", action="store_true", help="Overwrite local edits")
     s.set_defaults(fn=cmd_pull)
 
-    for name, fn, helptext in (("push", cmd_push, "Send note edits to SharePoint"), ("sync", cmd_sync, "Pull, merge, and push as needed")):
+    for name, fn, helptext in (
+        ("push", cmd_push, "Send note edits to SharePoint"),
+        ("sync", cmd_sync, "Pull, merge, and push as needed"),
+    ):
         s = sub.add_parser(name, help=helptext)
         s.add_argument("notes", nargs="*")
         s.add_argument("--all", action="store_true", help="Every linked note in the vault")

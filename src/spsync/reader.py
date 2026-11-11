@@ -505,7 +505,17 @@ def items_from_doc(doc, reader: Reader | None = None) -> list[Item]:
 
     items: list[Item] = []
     for blk in blocks:
-        items.append(Item(t="block", md=blk.md, kind=blk.kind, level=blk.level, locked=blk.locked, lock_reason=blk.lock_reason, i=blk.body_index))
+        items.append(
+            Item(
+                t="block",
+                md=blk.md,
+                kind=blk.kind,
+                level=blk.level,
+                locked=blk.locked,
+                lock_reason=blk.lock_reason,
+                i=blk.body_index,
+            )
+        )
         for cid in blk.comment_ids:
             c = comments.get(cid)
             root = cid
@@ -525,7 +535,13 @@ def join_items(items) -> str:
     prev = None
     for it in items:
         if out:
-            tight = prev is not None and prev.t == "block" and it.t == "block" and prev.kind in ("ul", "ol") and it.kind in ("ul", "ol")
+            tight = (
+                prev is not None
+                and prev.t == "block"
+                and it.t == "block"
+                and prev.kind in ("ul", "ol")
+                and it.kind in ("ul", "ol")
+            )
             out.append("\n" if tight else "\n\n")
         out.append(it.md)
         prev = it

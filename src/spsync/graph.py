@@ -43,7 +43,7 @@ class Graph:
                 force = True
                 continue
             if resp.status_code in (429, 503, 504) and attempt < 4:
-                time.sleep(min(float(resp.headers.get("Retry-After", 2 ** attempt)), 30))
+                time.sleep(min(float(resp.headers.get("Retry-After", 2**attempt)), 30))
                 continue
             if resp.status_code >= 400:
                 try:
@@ -81,7 +81,11 @@ class Graph:
             found = self._resolve_doc_aspx(ref)
             if found:
                 return found
-            raise GraphError(exc.status, exc.code, f"Could not resolve that link. In SharePoint use Share > Copy link, or find the doc with `spsync search`. ({exc.message})") from exc
+            raise GraphError(
+                exc.status,
+                exc.code,
+                f"Could not resolve that link. In SharePoint use Share > Copy link, or find the doc with `spsync search`. ({exc.message})",
+            ) from exc
 
     def _resolve_doc_aspx(self, url: str) -> dict | None:
         """Word Online URLs (Doc.aspx?sourcedoc={guid}&file=Name.docx) are not sharing links."""

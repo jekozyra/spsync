@@ -33,7 +33,9 @@ from .ooxml import (
 )
 from .reader import Item, Reader, load_document, part_by_reltype, part_xml
 
-PARA_RPR_ORDER = ["ins", "del", "moveFrom", "moveTo"] + [x for x in RPR_ORDER if x not in ("ins", "del", "moveFrom", "moveTo")]
+PARA_RPR_ORDER = ["ins", "del", "moveFrom", "moveTo"] + [
+    x for x in RPR_ORDER if x not in ("ins", "del", "moveFrom", "moveTo")
+]
 TOKEN = re.compile(r"\n|\t|[^\S\n\t]+|\w+|[^\w\s]")
 PARA_KINDS = {"h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "p", "quote"}
 
@@ -111,7 +113,9 @@ def _tokens(text: str) -> list[str]:
 
 
 class Patcher:
-    def __init__(self, base_docx: bytes, base_items: list[Item], *, author: str, initials: str = "", suggest: bool = False):
+    def __init__(
+        self, base_docx: bytes, base_items: list[Item], *, author: str, initials: str = "", suggest: bool = False
+    ):
         self.doc = load_document(base_docx)
         self.reader = Reader(self.doc)
         self.body = self.doc.element.body
@@ -229,7 +233,9 @@ class Patcher:
     def modify(self, old: Item, new: PItem, to_delete: list[Item]):
         el = self.elem(old)
         if old.locked:
-            self.report.warnings.append(f"Skipped edit to a block Obsidian can't safely change ({old.lock_reason}): {_snippet(old.md)}")
+            self.report.warnings.append(
+                f"Skipped edit to a block Obsidian can't safely change ({old.lock_reason}): {_snippet(old.md)}"
+            )
             return el
         if old.kind not in PARA_KINDS or new.kind not in PARA_KINDS:
             to_delete.append(old)
@@ -279,7 +285,11 @@ class Patcher:
         ppr, ref_p = self.ref_ppr(kind, level, near)
         if ppr is not None:
             p.append(ppr)
-        template = rpr_override if rpr_override is not None else self.template_rpr(self.reader.segments(ref_p)[0] if ref_p is not None else [])
+        template = (
+            rpr_override
+            if rpr_override is not None
+            else self.template_rpr(self.reader.segments(ref_p)[0] if ref_p is not None else [])
+        )
         stream = [(t, s, "ins") for s in segs for t in _tokens(s.text)]
         for node in self.build(stream, template):
             p.append(node)
@@ -301,7 +311,9 @@ class Patcher:
             self.report.deleted += 1
             return
         if b.locked or local(el) != "p":
-            self.report.warnings.append(f"Skipped suggested deletion of a block Obsidian can't safely change ({b.lock_reason or b.kind}): {_snippet(b.md)}")
+            self.report.warnings.append(
+                f"Skipped suggested deletion of a block Obsidian can't safely change ({b.lock_reason or b.kind}): {_snippet(b.md)}"
+            )
             return
         for r in list(el.iter(qn("w:r"))):
             if r.find(qn("w:commentReference")) is not None:
@@ -338,7 +350,12 @@ class Patcher:
                 self._set_level(ppr, level)
             return ppr, ref_p
         name = {
-            "h1": "heading 1", "h2": "heading 2", "h3": "heading 3", "h4": "heading 4", "h5": "heading 5", "h6": "heading 6",
+            "h1": "heading 1",
+            "h2": "heading 2",
+            "h3": "heading 3",
+            "h4": "heading 4",
+            "h5": "heading 5",
+            "h6": "heading 6",
             "ul": "List Bullet" + (f" {level + 1}" if level else ""),
             "ol": "List Number" + (f" {level + 1}" if level else ""),
             "quote": "Quote",
@@ -471,7 +488,12 @@ class Patcher:
         for text, seg, change in stream:
             if change == "del" and not self.suggest:
                 continue
-            key = (change, seg.link, seg.fmt if change == "ins" else id(seg.rpr), id(seg.link_el) if change != "ins" else None)
+            key = (
+                change,
+                seg.link,
+                seg.fmt if change == "ins" else id(seg.rpr),
+                id(seg.link_el) if change != "ins" else None,
+            )
             if groups and groups[-1][0] == key:
                 groups[-1][1].append(text)
             else:
@@ -482,7 +504,14 @@ class Patcher:
                 rpr = self.make_rpr(template, seg)
             else:
                 rpr = copy.deepcopy(seg.rpr) if seg.rpr is not None else None
-            runs.append((change, seg.link, seg.link_el if change != "ins" else None, self.make_run("".join(texts), rpr, change == "del")))
+            runs.append(
+                (
+                    change,
+                    seg.link,
+                    seg.link_el if change != "ins" else None,
+                    self.make_run("".join(texts), rpr, change == "del"),
+                )
+            )
         holder = make("w:p")
         k = 0
         while k < len(runs):
@@ -683,9 +712,14 @@ class Patcher:
         end = make("w:commentRangeEnd", {"w:id": str(cid)})
         ref = self._ref_run(cid)
         if parent_el is not None:
-            pstart = next((e for e in self.body.iter(qn("w:commentRangeStart")) if e.get(qn("w:id")) == str(c.re)), None)
+            pstart = next(
+                (e for e in self.body.iter(qn("w:commentRangeStart")) if e.get(qn("w:id")) == str(c.re)), None
+            )
             pend = next((e for e in self.body.iter(qn("w:commentRangeEnd")) if e.get(qn("w:id")) == str(c.re)), None)
-            pref = next((e.getparent() for e in self.body.iter(qn("w:commentReference")) if e.get(qn("w:id")) == str(c.re)), None)
+            pref = next(
+                (e.getparent() for e in self.body.iter(qn("w:commentReference")) if e.get(qn("w:id")) == str(c.re)),
+                None,
+            )
             if pstart is not None and pend is not None and pref is not None:
                 # Word orders comments by reference position; a reply must follow its parent.
                 pstart.addnext(start)
