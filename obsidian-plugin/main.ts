@@ -230,7 +230,7 @@ export default class SpsyncPlugin extends Plugin {
     const f = this.app.workspace.getActiveFile();
     if (!f) return;
     if (this.isLinked(f)) return new Notice("This note is already linked to SharePoint.");
-    new TextModal(this.app, "Folder link (or 'me' for your OneDrive)", async (folder) => {
+    new TextModal(this.app, "Synced folder path (or 'me' for your OneDrive root)", async (folder) => {
       try {
         const out = await this.run(["new", this.abs(f), "--folder", folder]);
         new Notice(out, 8000);
@@ -308,7 +308,7 @@ class QueryModal extends TextModal {
 
 class LinkModal extends TextModal {
   constructor(app: App, plugin: SpsyncPlugin) {
-    super(app, "Paste a SharePoint document link", (url) => plugin.pull(url));
+    super(app, "Paste a SharePoint link or the path of a synced .docx", (url) => plugin.pull(url));
   }
 }
 

@@ -11,7 +11,8 @@ from pathlib import Path
 from docx import Document
 from merge3 import Merge3
 
-from .graph import Graph, GraphError
+from .graph import GraphError
+from .local import Backend, backend
 from .mdparse import LIST, parse_note, split_frontmatter, with_frontmatter
 from .patch import BaseMismatchError, ConflictError, apply_note
 from .reader import join_items, read_items
@@ -48,20 +49,20 @@ def _initials(name: str) -> str:
 class Session:
     """Binds a Graph client to a vault."""
 
-    def __init__(self, vault: Path, graph: Graph | None = None):
+    def __init__(self, vault: Path, graph: Backend | None = None):
         self.vault = vault
         self.store = Store(vault)
         self._graph = graph
         self._me = None
 
     @classmethod
-    def for_path(cls, path: Path, graph: Graph | None = None) -> Session:
+    def for_path(cls, path: Path, graph: Backend | None = None) -> Session:
         return cls(find_vault(path), graph)
 
     @property
-    def graph(self) -> Graph:
+    def graph(self) -> Backend:
         if self._graph is None:
-            self._graph = Graph()
+            self._graph = backend()
         return self._graph
 
     def me(self) -> tuple[str, str]:
@@ -164,7 +165,7 @@ class Session:
             if exc.status == 412:
                 raise SyncError("The document changed in SharePoint since your last pull. Run `spsync sync` to merge.") from exc
             if exc.status == 423:
-                raise SyncError("The document is locked (someone has it open, or it is checked out). Try again shortly.") from exc
+                raise SyncError(f"The document is locked ({exc.message}). Try again shortly.") from exc
             raise
         item, data = self._fetch(b)
         self._bind(item, data, note)
@@ -208,7 +209,7 @@ class Session:
         folder = self.graph.resolve(folder_ref)
         if "folder" not in folder and "root" not in folder:
             raise SyncError("The --folder link must point to a SharePoint or OneDrive folder.")
-        drive_id = folder["parentReference"]["driveId"] if "parentReference" in folder and "driveId" in folder["parentReference"] else self.graph._req("GET", "/me/drive")["id"]
+        drive_id = (folder.get("parentReference") or {}).get("driveId") or self.graph.my_drive_id()
         buf = io.BytesIO()
         Document().save(buf)
         blank = buf.getvalue()

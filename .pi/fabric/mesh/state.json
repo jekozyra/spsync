@@ -1,0 +1,120 @@
+{
+  "format": 1,
+  "revisionFormat": 2,
+  "entries": {
+    "sessions/01a1c80c-289d-7682-b6fa-f201929f4197": {
+      "key": "sessions/01a1c80c-289d-7682-b6fa-f201929f4197",
+      "value": {
+        "id": "session:01a1c80c-289d-7682-b6fa-f201929f4197",
+        "name": "SPS-1",
+        "label": "SPS-1",
+        "kind": "peer",
+        "status": "running",
+        "runner": "pi",
+        "transport": "host",
+        "cwd": "/Users/jillian.kozyra/projects/spsync",
+        "sessionId": "01a1c80c-289d-7682-b6fa-f201929f4197",
+        "model": "amazon-bedrock/us.anthropic.claude-opus-5-5",
+        "thinking": "medium",
+        "startedAt": 1794357679968,
+        "updatedAt": 1794357885009,
+        "pendingMessages": false,
+        "local": false
+      },
+      "version": 43,
+      "updatedAt": 1794357885011,
+      "updatedBy": {
+        "id": "session:01a1c80c-289d-7682-b6fa-f201929f4197",
+        "name": "main",
+        "kind": "main",
+        "sessionId": "01a1c80c-289d-7682-b6fa-f201929f4197"
+      }
+    },
+    "topology/participants/c6cfd21c2facbc3f539d116cea30776b0e228cf30c25f9b1201f8a273827e784": {
+      "key": "topology/participants/c6cfd21c2facbc3f539d116cea30776b0e228cf30c25f9b1201f8a273827e784",
+      "value": {
+        "format": 1,
+        "id": "session:01a1c80c-289d-7682-b6fa-f201929f4197",
+        "kind": "root",
+        "rootId": "session:01a1c80c-289d-7682-b6fa-f201929f4197",
+        "ownerHostId": "session:01a1c80c-289d-7682-b6fa-f201929f4197",
+        "ownerIdentityId": "session:01a1c80c-289d-7682-b6fa-f201929f4197",
+        "name": "main",
+        "status": "running",
+        "runner": "pi",
+        "transport": "host",
+        "capabilities": [
+          "steer",
+          "followUp",
+          "fabric"
+        ],
+        "cwd": "/Users/jillian.kozyra/projects/spsync",
+        "sessionId": "01a1c80c-289d-7682-b6fa-f201929f4197",
+        "model": "amazon-bedrock/us.anthropic.claude-opus-5-5",
+        "thinking": "medium",
+        "startedAt": 1794357679968,
+        "updatedAt": 1794357885009,
+        "pendingMessages": false,
+        "controlProtocol": "v1",
+        "ownerIncarnation": "5bd0b66d-700c-4715-81dd-4428fc35bb30",
+        "label": "SPS-1"
+      },
+      "version": 44,
+      "updatedAt": 1794357885014,
+      "updatedBy": {
+        "id": "session:01a1c80c-289d-7682-b6fa-f201929f4197",
+        "name": "main",
+        "kind": "main",
+        "sessionId": "01a1c80c-289d-7682-b6fa-f201929f4197"
+      }
+    },
+    "topology/hosts/c6cfd21c2facbc3f539d116cea30776b0e228cf30c25f9b1201f8a273827e784": {
+      "key": "topology/hosts/c6cfd21c2facbc3f539d116cea30776b0e228cf30c25f9b1201f8a273827e784",
+      "value": {
+        "format": 1,
+        "id": "session:01a1c80c-289d-7682-b6fa-f201929f4197",
+        "rootId": "session:01a1c80c-289d-7682-b6fa-f201929f4197",
+        "identity": {
+          "id": "session:01a1c80c-289d-7682-b6fa-f201929f4197",
+          "name": "main",
+          "kind": "main",
+          "sessionId": "01a1c80c-289d-7682-b6fa-f201929f4197"
+        },
+        "startedAt": 1794357679969,
+        "updatedAt": 1794357885015,
+        "expiresAt": 1794357900015
+      },
+      "version": 45,
+      "updatedAt": 1794357885017,
+      "updatedBy": {
+        "id": "session:01a1c80c-289d-7682-b6fa-f201929f4197",
+        "name": "main",
+        "kind": "main",
+        "sessionId": "01a1c80c-289d-7682-b6fa-f201929f4197"
+      }
+    },
+    "topology/peer-seq/3": {
+      "key": "topology/peer-seq/3",
+      "value": {
+        "format": 1,
+        "next": 1
+      },
+      "version": 4,
+      "updatedAt": 1794357680007,
+      "updatedBy": {
+        "id": "session:01a1c80c-289d-7682-b6fa-f201929f4197",
+        "name": "main",
+        "kind": "main",
+        "sessionId": "01a1c80c-289d-7682-b6fa-f201929f4197"
+      }
+    }
+  },
+  "highWater": 130,
+  "versions": {
+    "sessions/01a1c80c-289d-7682-b6fa-f201929f4197": 43,
+    "topology/participants/c6cfd21c2facbc3f539d116cea30776b0e228cf30c25f9b1201f8a273827e784": 44,
+    "topology/hosts/c6cfd21c2facbc3f539d116cea30776b0e228cf30c25f9b1201f8a273827e784": 45,
+    "topology/peer-seq/3": 4
+  },
+  "tombstoneOrder": []
+}
