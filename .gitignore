@@ -5,3 +5,4 @@ __pycache__/
 .ruff_cache/
 obsidian-plugin/node_modules/
 obsidian-plugin/main.js
+.pi/
