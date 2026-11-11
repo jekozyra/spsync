@@ -1,0 +1,3 @@
+# Commit 98cb46e tracked pi session state by mistake, and commit c775ca0 removed it.
+# The finding is a mesh state key: "topology/participants/" and a SHA-256 participant hash. It is not a credential.
+98cb46e93389deeea568e08d2de127e5fccfaf7c:.pi/fabric/mesh/state.json:generic-api-key:34

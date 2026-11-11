@@ -117,3 +117,19 @@ uv run pytest
 uv run python scripts/word_fixtures.py ~/Documents/spsync-check   # then open in Word
 osascript scripts/word_check.applescript ~/Documents/spsync-check/1-direct.docx
 ```
+
+## Contributing
+
+Issues are welcome. Open an issue to report a bug or to ask for a feature. The project does not accept pull requests from people outside the team.
+
+## Maintainers
+
+Jillian Kozyra ([@jekozyra](https://github.com/jekozyra)) maintains spsync.
+
+## License
+
+spsync is released under the MIT license. See [`LICENSE`](LICENSE).
+
+spsync depends on [`merge3`](https://pypi.org/project/merge3/), which is licensed under GPL-2.0-or-later. The repository declares `merge3` as a dependency and does not include its code.
+
+The vendored Oxlint rules in `obsidian-plugin/tools/oxlint/anti-slop/` keep their own MIT license files. [`UPSTREAM.md`](obsidian-plugin/tools/oxlint/anti-slop/UPSTREAM.md) names their source.
