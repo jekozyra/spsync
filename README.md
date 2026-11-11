@@ -106,7 +106,7 @@ The plugin's settings tab sets the CLI path, the author name, automatic sync, th
 |---|---|
 | `src/spsync/` | The CLI: `cli.py` commands, `config.py` settings, `reader/` and `patch/` docx parsing and patching, `local.py`, `word/`, and `graph.py` backends |
 | `obsidian-plugin/` | The Obsidian plugin, which shells out to the CLI |
-| `scripts/` | Helpers that generate Word fixtures and check them in Word |
+| `scripts/` | The standalone build, and helpers that generate Word fixtures and check them in Word |
 | `tests/` | pytest suite and `.docx` fixtures |
 
 Install the git hooks once. The pre-commit hook runs ruff, ty, anti-slop-python, pytest, and the plugin's Oxfmt, Oxlint, and build checks. [`CODING_STANDARDS.md`](CODING_STANDARDS.md) lists every check.
@@ -122,6 +122,12 @@ To run the tests and check fixtures against real Word:
 uv run pytest
 uv run python scripts/word_fixtures.py ~/Documents/spsync-check   # then open in Word
 osascript scripts/word_check.applescript ~/Documents/spsync-check/1-direct.docx
+```
+
+To build the standalone CLI, which runs without Python or uv, run the build script on a Mac of the target architecture. It needs the Xcode Command Line Tools and writes `dist/spsync-macos-<arch>.tar.gz`:
+
+```sh
+scripts/build_standalone.sh
 ```
 
 ## Contributing
