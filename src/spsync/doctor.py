@@ -68,12 +68,16 @@ class SetupEnvironment:
         )
 
 
-def _version() -> Check:
+def cli_version() -> str:
+    """The installed spsync package version, or "unknown" when the package metadata is missing."""
     try:
-        version = metadata.version(PACKAGE_NAME)
+        return metadata.version(PACKAGE_NAME)
     except metadata.PackageNotFoundError:
-        version = "unknown"
-    return Check("CLI version", ok=True, required=False, detail=f"{PACKAGE_NAME} {version}")
+        return "unknown"
+
+
+def _version() -> Check:
+    return Check("CLI version", ok=True, required=False, detail=f"{PACKAGE_NAME} {cli_version()}")
 
 
 def _onedrive(env: SetupEnvironment) -> Check:
