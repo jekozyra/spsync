@@ -99,8 +99,18 @@ def test_new_doc_in_synced_folder(env):
 
 def test_sharepoint_url_in_local_mode_explains(env):
     s = env[0]
-    with pytest.raises(Exception, match="OneDrive"):
+    with pytest.raises(Exception, match="Add shortcut"):
         s.pull("https://granicus.sharepoint.com/x.docx")
+
+
+def test_doc_aspx_link_finds_synced_copy(env):
+    s, doc, _ = env
+    url = (
+        "https://granicus-my.sharepoint.com/:w:/r/personal/b_granicus_com/_layouts/15/Doc.aspx"
+        "?sourcedoc=%7B7017%7D&file=Budget%20Memo.docx&action=default"
+    )
+    note = s.pull(url)
+    assert note.name == "Budget Memo.md" and str(doc.resolve()) in note.read_text()
 
 
 def test_unchanged_sync_is_quiet(env):
