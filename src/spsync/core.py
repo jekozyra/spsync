@@ -15,7 +15,7 @@ from .graph import GraphError
 from .local import Backend, backend
 from .mdparse import LIST, parse_note, split_frontmatter, with_frontmatter
 from .patch import BaseMismatchError, ConflictError, apply_note
-from .reader import join_items, read_items
+from .reader import join_items, read_items, read_items_and_media
 from .store import Binding, Store, find_vault
 
 FM_URL = "sharepoint"
@@ -100,7 +100,14 @@ class Session:
             note.write_text(text)
 
     def _bind(self, item: dict, data: bytes, note: Path) -> Binding:
-        items = read_items(data)
+        items, media = read_items_and_media(data)
+        if media:
+            folder = self.vault / "SharePoint" / "_media"
+            folder.mkdir(parents=True, exist_ok=True)
+            for name, blob in media.items():
+                path = folder / name
+                if not path.exists():
+                    path.write_bytes(blob)
         b = Binding(
             drive_id=item["parentReference"]["driveId"],
             item_id=item["id"],

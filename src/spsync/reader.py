@@ -144,6 +144,7 @@ class Reader:
         self.styles = Styles(doc)
         self.numbering = Numbering(doc)
         self.rels = doc.part.rels
+        self.media: dict[str, bytes] = {}
 
     # ---- paragraph classification ----
     def para_style_id(self, p) -> str | None:
@@ -278,7 +279,12 @@ class Reader:
                 locks.append("field")
             elif name in ("drawing", "pict", "object"):
                 locks.append("image")
-                add("‹image›")
+                embeds = [self.image(rid) for rid in self._image_rids(c)]
+                embeds = [e for e in embeds if e]
+                if embeds:
+                    segs.append(Seg("‹image›", link=link, rpr=rpr, raw=" ".join(f"![[{e}]]" for e in embeds)))
+                else:
+                    add("‹image›")
             elif name in ("footnoteReference", "endnoteReference"):
                 locks.append("footnote")
                 add("‹footnote›")
@@ -286,12 +292,44 @@ class Reader:
                 locks.append(name)
                 add(f"‹{name}›")
 
+    @staticmethod
+    def _image_rids(el) -> list[str]:
+        rids = []
+        a_blip = "{http://schemas.openxmlformats.org/drawingml/2006/main}blip"
+        v_img = "{urn:schemas-microsoft-com:vml}imagedata"
+        for e in el.iter(a_blip, v_img):
+            rid = e.get(qn("r:embed")) or e.get(qn("r:id"))
+            if rid and rid not in rids:
+                rids.append(rid)
+        return rids[:1]  # the first blip is the main picture; later ones are fallbacks or effects
+
+    def image(self, rid: str) -> str | None:
+        """Register an embedded picture and return its vault file name."""
+        import hashlib
+        import posixpath
+
+        rel = self.rels.get(rid)
+        if rel is None or rel.is_external:
+            return None
+        part = rel.target_part
+        ext = posixpath.splitext(str(part.partname))[1].lower() or ".bin"
+        if ext in (".emf", ".wmf"):
+            return None  # Obsidian can't display Windows metafiles
+        blob = part.blob
+        name = f"spsync-{hashlib.sha1(blob).hexdigest()[:12]}{ext}"
+        self.media[name] = blob
+        return name
+
     def para_block(self, p) -> Block | None:
         kind, level = self.para_kind(p)
         segs, locks, cids = self.segments(p)
         text = render_inline(segs).strip()
         if not text and not locks:
             return Block(kind="empty", level=0, md="", comment_ids=cids)
+        if not text:
+            # Nothing visible (a page break, say). Keep a placeholder so the block round-trips.
+            reason = ", ".join(sorted(set(locks)))
+            return Block(kind="raw", level=0, md=f"%% {reason} %%", locked=True, lock_reason=reason, comment_ids=cids)
         return Block(
             kind=kind,
             level=level,
@@ -411,12 +449,17 @@ class Item:
 
 
 def read_items(data: bytes) -> list[Item]:
+    return read_items_and_media(data)[0]
+
+
+def read_items_and_media(data: bytes) -> tuple[list[Item], dict[str, bytes]]:
     doc = load_document(data)
-    return items_from_doc(doc)
-
-
-def items_from_doc(doc) -> list[Item]:
     reader = Reader(doc)
+    return items_from_doc(doc, reader), reader.media
+
+
+def items_from_doc(doc, reader: Reader | None = None) -> list[Item]:
+    reader = reader or Reader(doc)
     comments = read_comments(doc)
     blocks: list[Block] = []
     pending: list[int] = []

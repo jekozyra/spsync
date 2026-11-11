@@ -138,8 +138,8 @@ class Patcher:
         for b in self.base_blocks:
             if b.i is None or b.i >= len(self.children):
                 raise BaseMismatchError("Saved base document does not match its block map. Pull again.")
-            want = {"table": "tbl", "raw": "sdt"}.get(b.kind, "p")
-            if local(self.children[b.i]) != want:
+            want = {"table": ("tbl",), "raw": ("sdt", "p")}.get(b.kind, ("p",))
+            if local(self.children[b.i]) not in want:
                 raise BaseMismatchError("Saved base document does not match its block map. Pull again.")
             self.index_of[id(self.children[b.i])] = b.i
 
