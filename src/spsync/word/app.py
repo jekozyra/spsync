@@ -21,8 +21,9 @@ URL_SAFE = ":/?&=%#~+,;@!$'()*"
 WORD_BUNDLE_ID = "com.microsoft.Word"
 WORD_LAUNCH_TIMEOUT_SECONDS = 60
 WORD_LAUNCH_POLL_SECONDS = 0.5
-# The first Apple event can wait on the macOS permission prompt until the user answers.
-PERMISSION_TIMEOUT_SECONDS = 300
+# The first Apple event can wait on the macOS permission prompt until the user answers. The launch wait and
+# this wait together stay under the plugin's five-minute limit for one CLI run.
+PERMISSION_TIMEOUT_SECONDS = 180
 # osascript ends its message with this code when macOS denies Automation access to Word.
 NOT_AUTHORIZED_CODE = "(-1743)"
 
