@@ -20,7 +20,7 @@ from .graph import GraphError
 from .inline import Seg, parse_inline, plain
 from .mdparse import PItem
 from .ooxml import elements
-from .patch import PARA_KINDS, Report, _tokens, pair_hunk
+from .patch import PARA_KINDS, Report, pair_hunk, tokens
 from .reader import (
     Item,
     Reader,
@@ -405,10 +405,10 @@ class Planner:
         omap = offset_map(old_text, raw)
         old, pos = [], 0
         for s in old_segs:
-            for t in _tokens(s.text):
+            for t in tokens(s.text):
                 old.append((t, s, pos))
                 pos += len(t)
-        newt = [(t, s) for s in new_segs for t in _tokens(s.text)]
+        newt = [(t, s) for s in new_segs for t in tokens(s.text)]
 
         def key(x):
             return (x[0], x[1].fmt, x[1].link)
