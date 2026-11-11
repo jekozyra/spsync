@@ -6,15 +6,27 @@ is `local`, and the eTag is the file's modification time and size.
 
 from __future__ import annotations
 
+import datetime
 import os
 import subprocess
+from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
+from urllib.parse import parse_qs, unquote, urlparse
 
-from .auth import load_config
+from . import config
 from .graph import Graph, GraphError
 
+if TYPE_CHECKING:
+    from .mdparse import PItem
+    from .patch import Report
+    from .reader import Item
+
 LOCAL = "local"
+WORD = "word"
+FILE_URL_PREFIX = "file://"
+ID_TIMEOUT_SECONDS = 5
+RECENT_LIMIT = 50
 
 
 class Backend(Protocol):
@@ -29,21 +41,38 @@ class Backend(Protocol):
     def my_drive_id(self) -> str: ...
 
 
+class WordEditor(Backend, Protocol):
+    """A backend that applies note edits through the Word app instead of uploading a patched file."""
+
+    def apply(
+        self,
+        url: str,
+        base_docx: bytes,
+        base_items: list[Item],
+        new_items: list[PItem],
+        *,
+        suggest: bool,
+        dry_run: bool,
+    ) -> tuple[Report, bytes | None]: ...
+
+
+class SessionBackend(Backend, Protocol):
+    """What a sync session needs: Backend operations routed by item, and the Word editor for Word items."""
+
+    @property
+    def word(self) -> WordEditor: ...
+
+
 def default_roots() -> list[Path]:
-    cfg = load_config()
-    if cfg.get("roots"):
-        return [Path(r).expanduser() for r in cfg["roots"]]
-    env = os.environ.get("SPSYNC_ROOTS")
-    if env:
-        return [Path(r).expanduser() for r in env.split(os.pathsep) if r]
+    roots = config.configured_roots()
+    if roots is not None:
+        return roots
     cloud = Path.home() / "Library" / "CloudStorage"
     return sorted(p for p in cloud.glob("OneDrive*") if p.is_dir()) if cloud.exists() else []
 
 
 def link_file_name(url: str) -> str | None:
     """File name from a SharePoint/OneDrive link: the Doc.aspx ?file= parameter or the last path part."""
-    from urllib.parse import parse_qs, unquote, urlparse
-
     u = urlparse(url)
     name = (parse_qs(u.query).get("file") or [None])[0]
     if not name:
@@ -60,16 +89,18 @@ def lock_files(path: Path) -> list[Path]:
 
 def _full_name() -> str:
     try:
-        out = subprocess.run(["id", "-F"], capture_output=True, text=True, timeout=5, check=False).stdout.strip()
+        out = subprocess.run(
+            ["id", "-F"], capture_output=True, text=True, timeout=ID_TIMEOUT_SECONDS, check=False
+        ).stdout.strip()
     except (OSError, subprocess.SubprocessError):
         out = ""
-    return out or os.environ.get("USER", "spsync")
+    return out or config.login_name()
 
 
 class LocalBackend:
-    def __init__(self, roots: list[Path] | None = None, author: str | None = None):
+    def __init__(self, roots: list[Path] | None = None, author: str | None = None) -> None:
         self.roots = roots if roots is not None else default_roots()
-        self.author = author or load_config().get("author") or _full_name()
+        self.author = author or config.configured_author() or _full_name()
 
     # ---- items ----
     @staticmethod
@@ -83,7 +114,9 @@ class LocalBackend:
             "name": path.name,
             "eTag": f"{st.st_mtime_ns}-{st.st_size}",
             "webUrl": path.as_uri(),
-            "lastModifiedDateTime": __import__("datetime").datetime.fromtimestamp(st.st_mtime).isoformat(),
+            "lastModifiedDateTime": datetime.datetime.fromtimestamp(st.st_mtime, tz=datetime.UTC)
+            .astimezone()
+            .isoformat(),
             "parentReference": {"driveId": LOCAL},
         }
         d["folder" if path.is_dir() else "file"] = {}
@@ -91,16 +124,16 @@ class LocalBackend:
 
     def resolve(self, ref: str) -> dict:
         if ref.startswith(LOCAL + ":"):
-            ref = ref[len(LOCAL) + 1:]
-        if ref.startswith("file://"):
-            from urllib.parse import unquote
-
-            ref = unquote(ref[7:])
+            ref = ref[len(LOCAL) + 1 :]
+        if ref.startswith(FILE_URL_PREFIX):
+            ref = unquote(ref[len(FILE_URL_PREFIX) :])
         if ref == "me" and self.roots:
             return self._info(self.roots[0])
         path = Path(ref).expanduser()
         if not path.exists():
-            raise GraphError(404, "itemNotFound", f"No such file: {ref}. In local mode, pass a path or use `spsync search`.")
+            raise GraphError(
+                404, "itemNotFound", f"No such file: {ref}. In local mode, pass a path or use `spsync search`."
+            )
         return self._info(path)
 
     def item(self, drive_id: str, item_id: str) -> dict:
@@ -138,7 +171,7 @@ class LocalBackend:
         return {"displayName": self.author}
 
     # ---- discovery ----
-    def _docs(self):
+    def _docs(self) -> Iterator[Path]:
         for root in self.roots:
             for dirpath, dirnames, filenames in os.walk(root):
                 dirnames[:] = [d for d in dirnames if not d.startswith(".")]
@@ -146,7 +179,7 @@ class LocalBackend:
                     if fn.lower().endswith(".docx") and not fn.startswith(("~$", ".")):
                         yield Path(dirpath) / fn
 
-    def _hit(self, path: Path, root_rel: bool = True) -> dict:
+    def _hit(self, path: Path) -> dict:
         d = self._info(path)
         d["lastModifiedBy"] = {"user": {"displayName": self._where(path)}}
         return d
@@ -174,20 +207,20 @@ class LocalBackend:
 
     def recent(self) -> list[dict]:
         found = sorted(self._docs(), key=lambda p: p.stat().st_mtime, reverse=True)
-        return [self._hit(p) for p in found[:50]]
+        return [self._hit(p) for p in found[:RECENT_LIMIT]]
 
 
 class Router:
     """Send each operation to the local backend or Graph, based on the item."""
 
-    def __init__(self, mode: str):
+    def __init__(self, mode: str, *, local: LocalBackend | None = None, word: WordEditor | None = None) -> None:
         self.mode = mode
-        self.local = LocalBackend()
+        self.local = local or LocalBackend()
         self._graph: Graph | None = None
-        self._word = None
+        self._word = word
 
     @property
-    def word(self):
+    def word(self) -> WordEditor:
         if self._word is None:
             from .word import WordBackend
 
@@ -200,20 +233,24 @@ class Router:
             self._graph = Graph()
         return self._graph
 
-    def _pick(self, drive_id: str):
-        if drive_id == "word":
+    def _pick(self, drive_id: str) -> Backend:
+        if drive_id == WORD:
             return self.word
         return self.local if drive_id == LOCAL else self.graph
 
-    def resolve(self, ref):
-        if ref.startswith("word:"):
-            return self.word.resolve(ref[5:])
+    def resolve(self, ref: str) -> dict:
+        if ref.startswith(WORD + ":"):
+            return self.word.resolve(ref[len(WORD) + 1 :])
         if ref.endswith(".url") and Path(ref).expanduser().exists():
             for line in Path(ref).expanduser().read_text(errors="replace").splitlines():
                 if line.startswith("URL="):
                     return self.word.resolve(line[4:].strip())
         is_url = ref.startswith("http")
-        if not is_url and (ref.startswith((LOCAL + ":", "file://", "/", "~", ".")) or Path(ref).expanduser().exists() or self.mode == LOCAL):
+        if not is_url and (
+            ref.startswith((LOCAL + ":", FILE_URL_PREFIX, "/", "~", "."))
+            or Path(ref).expanduser().exists()
+            or self.mode == LOCAL
+        ):
             return self.local.resolve(ref)
         if is_url and self.mode == LOCAL:
             name = link_file_name(ref)
@@ -226,53 +263,51 @@ class Router:
                     raise GraphError(409, "ambiguous", f"Several synced copies of {name} ({where}). Pull one by path.")
             # Not synced locally: let Word open it.
             return self.word.resolve(ref)
-            raise GraphError(
-                400,
-                "localMode",
-                "SharePoint links need Graph sign-in, which isn't approved yet. Sync the library with OneDrive "
-                "(SharePoint > Sync or Add shortcut to My files), then use `spsync search` or a file path.",
-            )
         return self.graph.resolve(ref)
 
-    def item(self, d, i):
-        return self._pick(d).item(d, i)
+    def item(self, drive_id: str, item_id: str) -> dict:
+        return self._pick(drive_id).item(drive_id, item_id)
 
-    def download(self, d, i):
-        return self._pick(d).download(d, i)
+    def download(self, drive_id: str, item_id: str) -> bytes:
+        return self._pick(drive_id).download(drive_id, item_id)
 
-    def upload(self, d, i, data, etag):
-        return self._pick(d).upload(d, i, data, etag)
+    def upload(self, drive_id: str, item_id: str, data: bytes, etag: str | None) -> dict:
+        return self._pick(drive_id).upload(drive_id, item_id, data, etag)
 
-    def create(self, d, p, name, data):
-        return self._pick(d).create(d, p, name, data)
+    def create(self, drive_id: str, parent_id: str, name: str, data: bytes) -> dict:
+        return self._pick(drive_id).create(drive_id, parent_id, name, data)
 
-    def my_drive_id(self):
+    def my_drive_id(self) -> str:
         return LOCAL if self.mode == LOCAL else self.graph.my_drive_id()
 
-    def me(self):
+    def me(self) -> dict:
         return self.local.me() if self.mode == LOCAL else self.graph.me()
 
-    def _with_word(self, hits, word_hits):
+    @staticmethod
+    def _with_word(hits: list[dict], word_hits: list[dict]) -> list[dict]:
         names = {h["name"].lower() for h in hits}
         return hits + [h for h in word_hits if h["name"].lower() not in names]
 
-    def _word_hits(self, fn):
+    @staticmethod
+    def _word_hits(fn: Callable[[], list[dict]]) -> list[dict]:
+        """Word hits, or none when Word is missing or cannot be scripted."""
         try:
             return fn()
-        except Exception:  # noqa: BLE001 - Word missing or not scriptable
+        except (GraphError, OSError):
             return []
 
-    def search(self, query, size=25):
+    def search(self, query: str, size: int = 25) -> list[dict]:
         if self.mode != LOCAL:
             return self.graph.search(query, size)
-        return self._with_word(self.local.search(query, size), self._word_hits(lambda: self.word.search(query, size)))[:size]
+        return self._with_word(self.local.search(query, size), self._word_hits(lambda: self.word.search(query, size)))[
+            :size
+        ]
 
-    def recent(self):
+    def recent(self) -> list[dict]:
         if self.mode != LOCAL:
             return self.graph.recent()
         return self._with_word(self._word_hits(self.word.recent), self.local.recent())
 
 
 def backend() -> Router:
-    mode = os.environ.get("SPSYNC_BACKEND") or load_config().get("backend") or LOCAL
-    return Router(mode)
+    return Router(config.backend_mode() or LOCAL)

@@ -4,81 +4,90 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 import time
 from pathlib import Path
 from urllib.parse import unquote
 
-from .auth import CONFIG_DIR, Auth, AuthError, load_config, save_config
+from . import config
+from .auth import Auth, AuthError
 from .core import Session, SyncError
 from .graph import Graph, GraphError
-from .local import backend
+from .local import LOCAL, WORD, backend
 from .mdparse import split_frontmatter
 
-LAST_SEARCH = CONFIG_DIR / "last_search.json"
+LAST_SEARCH = config.CONFIG_DIR / "last_search.json"
+FILE_URL_PREFIX = "file://"
+WATCH_TICK_SECONDS = 5
+EXIT_ERROR = 1
+EXIT_CONFLICT = 2
+EXIT_INTERRUPTED = 130
 
 
-def _vault(args) -> Path:
-    if getattr(args, "vault", None):
+def _vault(args: argparse.Namespace) -> Path:
+    """The vault from --vault, then SPSYNC_VAULT, then the current folder."""
+    if args.vault:
         return Path(args.vault).expanduser()
-    env = os.environ.get("SPSYNC_VAULT")
-    return Path(env).expanduser() if env else Path.cwd()
+    return config.default_vault()
 
 
 def _session_for_note(note: Path) -> Session:
     return Session.for_path(note)
 
 
-def cmd_login(args):
+def cmd_login(args: argparse.Namespace) -> None:
     auth = Auth()
     auth.login(device=args.device)
     me = Graph(auth).me()
     print(f"Signed in as {me.get('displayName')} <{me.get('mail') or me.get('userPrincipalName')}>")
 
 
-def cmd_mode(args):
-    cfg = load_config()
+def cmd_mode(args: argparse.Namespace) -> None:
+    cfg = config.load_config()
     if args.mode:
         cfg["backend"] = args.mode
-        save_config(cfg)
+        config.save_config(cfg)
     if args.author:
         cfg["author"] = args.author
-        save_config(cfg)
+        config.save_config(cfg)
     if args.root:
         cfg["roots"] = [str(Path(r).expanduser()) for r in args.root]
-        save_config(cfg)
+        config.save_config(cfg)
     b = backend()
     print(f"backend: {b.mode}")
-    if b.mode == "local":
+    if b.mode == LOCAL:
         print(f"author:  {b.local.author}")
         for r in b.local.roots:
             print(f"root:    {r}")
 
 
-def cmd_logout(args):
+def cmd_logout(args: argparse.Namespace) -> None:
     Auth().logout()
     print("Signed out.")
 
 
-def cmd_whoami(args):
+def cmd_whoami(args: argparse.Namespace) -> None:
     me = backend().me()
     print(f"{me.get('displayName')} <{me.get('mail') or me.get('userPrincipalName')}>")
 
 
-def _print_hits(hits, as_json=False):
+def _print_hits(hits: list[dict], *, as_json: bool = False) -> None:
     if as_json:
-        print(json.dumps([
-            {
-                "ref": f"{(h.get('parentReference') or {}).get('driveId', '')}:{h.get('id')}",
-                "name": h.get("name"),
-                "webUrl": h.get("webUrl"),
-                "modified": (h.get("lastModifiedDateTime") or "")[:10],
-                "by": ((h.get("lastModifiedBy") or {}).get("user") or {}).get("displayName", ""),
-            }
-            for h in hits
-        ]))
+        print(
+            json.dumps(
+                [
+                    {
+                        "ref": f"{(h.get('parentReference') or {}).get('driveId', '')}:{h.get('id')}",
+                        "name": h.get("name"),
+                        "webUrl": h.get("webUrl"),
+                        "modified": (h.get("lastModifiedDateTime") or "")[:10],
+                        "by": ((h.get("lastModifiedBy") or {}).get("user") or {}).get("displayName", ""),
+                    }
+                    for h in hits
+                ]
+            )
+        )
         return
     saved = []
     for n, h in enumerate(hits, 1):
@@ -95,12 +104,12 @@ def _print_hits(hits, as_json=False):
         print("\nPull one with: spsync pull <number>")
 
 
-def cmd_search(args):
-    _print_hits(backend().search(" ".join(args.query), size=args.limit), args.json)
+def cmd_search(args: argparse.Namespace) -> None:
+    _print_hits(backend().search(" ".join(args.query), size=args.limit), as_json=args.json)
 
 
-def cmd_recent(args):
-    _print_hits(backend().recent()[: args.limit], args.json)
+def cmd_recent(args: argparse.Namespace) -> None:
+    _print_hits(backend().recent()[: args.limit], as_json=args.json)
 
 
 def _expand_ref(ref: str) -> str:
@@ -112,7 +121,7 @@ def _expand_ref(ref: str) -> str:
     return ref
 
 
-def cmd_pull(args):
+def cmd_pull(args: argparse.Namespace) -> None:
     vault = _vault(args)
     out = Path(args.out).expanduser() if args.out else None
     session = Session.for_path(out.parent if out else vault)
@@ -120,7 +129,7 @@ def cmd_pull(args):
     print(f"Pulled to {note}")
 
 
-def _notes(args) -> list[Path]:
+def _notes(args: argparse.Namespace) -> list[Path]:
     if args.all:
         vault = _vault(args)
         s = Session.for_path(vault)
@@ -130,33 +139,33 @@ def _notes(args) -> list[Path]:
     return [Path(n).expanduser() for n in args.notes]
 
 
-def cmd_push(args):
+def cmd_push(args: argparse.Namespace) -> None:
     for note in _notes(args):
         res = _session_for_note(note).push(note, suggest=args.suggest, dry_run=args.dry_run)
         print(f"{note.name}: {res.status}. {res.message}")
 
 
-def cmd_sync(args):
+def cmd_sync(args: argparse.Namespace) -> int:
     rc = 0
     for note in _notes(args):
         try:
             res = _session_for_note(note).sync(note, suggest=args.suggest)
             print(f"{note.name}: {res.status}. {res.message}")
             if res.status == "conflict":
-                rc = 2
+                rc = EXIT_CONFLICT
         except (SyncError, GraphError) as exc:
             print(f"{note.name}: error. {exc}", file=sys.stderr)
-            rc = 1
+            rc = EXIT_ERROR
     return rc
 
 
-def cmd_new(args):
+def cmd_new(args: argparse.Namespace) -> None:
     note = Path(args.note).expanduser()
     res = _session_for_note(note).new(note, _expand_ref(args.folder), args.name, suggest=False)
     print(res.message)
 
 
-def cmd_status(args):
+def cmd_status(args: argparse.Namespace) -> None:
     vault = _vault(args)
     s = Session.for_path(vault)
     bindings = s.store.all()
@@ -178,18 +187,18 @@ def cmd_status(args):
         print(f"{'edited ' if local else 'clean  '}{remote:>15}  {b.note}")
 
 
-def cmd_open(args):
+def cmd_open(args: argparse.Namespace) -> None:
     note = Path(args.note).expanduser()
     fm, _ = split_frontmatter(note.read_text())
     url = fm.get("sharepoint")
-    if url and url.startswith("file://"):
-        url = unquote(url[7:])
+    if url and url.startswith(FILE_URL_PREFIX):
+        url = unquote(url[len(FILE_URL_PREFIX) :])
     if not url:
         raise SyncError("This note has no `sharepoint` link.")
     subprocess.run(["open", url], check=False)
 
 
-def cmd_unlink(args):
+def cmd_unlink(args: argparse.Namespace) -> None:
     note = Path(args.note).expanduser()
     s = _session_for_note(note)
     b, _ = s.binding_for(note)
@@ -197,11 +206,13 @@ def cmd_unlink(args):
     print(f"Unlinked {note.name}. The note and the SharePoint document are untouched.")
 
 
-def cmd_watch(args):
+def cmd_watch(args: argparse.Namespace) -> None:
     vault = _vault(args)
     s = Session.for_path(vault)
     last_remote: dict[str, float] = {}
-    print(f"Watching {s.vault} (remote every {args.interval}s, push after {args.idle}s idle). Ctrl-C to stop.", flush=True)
+    print(
+        f"Watching {s.vault} (remote every {args.interval}s, push after {args.idle}s idle). Ctrl-C to stop.", flush=True
+    )
     while True:
         for b in s.store.all():
             note = s.vault / b.note
@@ -212,7 +223,7 @@ def cmd_watch(args):
                 local, _ = s.local_changed(b, note)
                 if local and now - note.stat().st_mtime < args.idle:
                     continue
-                remote_due = now - last_remote.get(b.ref, 0) >= args.interval and b.drive_id != "word"
+                remote_due = now - last_remote.get(b.ref, 0) >= args.interval and b.drive_id != WORD
                 if local or remote_due:
                     last_remote[b.ref] = now
                     res = s.sync(note, suggest=args.suggest)
@@ -220,13 +231,10 @@ def cmd_watch(args):
                         print(f"{time.strftime('%H:%M:%S')} {b.note}: {res.status}. {res.message}", flush=True)
             except (SyncError, GraphError, AuthError) as exc:
                 print(f"{time.strftime('%H:%M:%S')} {b.note}: error. {exc}", file=sys.stderr, flush=True)
-        time.sleep(5)
+        time.sleep(WATCH_TICK_SECONDS)
 
 
-def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="spsync", description="Edit SharePoint Word documents as Obsidian notes.")
-    sub = p.add_subparsers(dest="cmd", required=True)
-
+def _add_account_commands(sub: argparse._SubParsersAction) -> None:
     s = sub.add_parser("login", help="Sign in to Microsoft 365")
     s.add_argument("--device", action="store_true", help="Use a device code instead of a browser window")
     s.set_defaults(fn=cmd_login)
@@ -238,6 +246,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(fn=cmd_mode)
     sub.add_parser("whoami", help="Show the signed-in account").set_defaults(fn=cmd_whoami)
 
+
+def _add_discovery_commands(sub: argparse._SubParsersAction) -> None:
     s = sub.add_parser("search", help="Find Word documents across SharePoint and OneDrive")
     s.add_argument("query", nargs="+")
     s.add_argument("--limit", type=int, default=15)
@@ -249,6 +259,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_recent)
 
+
+def _add_sync_commands(sub: argparse._SubParsersAction) -> None:
     s = sub.add_parser("pull", help="Download a document into the vault as a note")
     s.add_argument("ref", help="SharePoint link, driveId:itemId, or a number from the last search")
     s.add_argument("--out", help="Note path (default: <vault>/SharePoint/<name>.md)")
@@ -256,7 +268,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--force", action="store_true", help="Overwrite local edits")
     s.set_defaults(fn=cmd_pull)
 
-    for name, fn, helptext in (("push", cmd_push, "Send note edits to SharePoint"), ("sync", cmd_sync, "Pull, merge, and push as needed")):
+    for name, fn, helptext in (
+        ("push", cmd_push, "Send note edits to SharePoint"),
+        ("sync", cmd_sync, "Pull, merge, and push as needed"),
+    ):
         s = sub.add_parser(name, help=helptext)
         s.add_argument("notes", nargs="*")
         s.add_argument("--all", action="store_true", help="Every linked note in the vault")
@@ -266,6 +281,8 @@ def build_parser() -> argparse.ArgumentParser:
             s.add_argument("--dry-run", action="store_true", help="Show what would change without uploading")
         s.set_defaults(fn=fn)
 
+
+def _add_note_commands(sub: argparse._SubParsersAction) -> None:
     s = sub.add_parser("new", help="Create a new Word document in SharePoint from a note")
     s.add_argument("note")
     s.add_argument("--folder", required=True, help="Folder link, or `me` for your OneDrive root")
@@ -291,19 +308,28 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--idle", type=int, default=20, help="Seconds a note must be idle before pushing")
     s.add_argument("--suggest", action="store_true")
     s.set_defaults(fn=cmd_watch)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="spsync", description="Edit SharePoint Word documents as Obsidian notes.")
+    sub = p.add_subparsers(dest="cmd", required=True)
+    _add_account_commands(sub)
+    _add_discovery_commands(sub)
+    _add_sync_commands(sub)
+    _add_note_commands(sub)
     return p
 
 
-def main(argv=None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         rc = args.fn(args)
         return rc or 0
     except KeyboardInterrupt:
-        return 130
+        return EXIT_INTERRUPTED
     except (SyncError, GraphError, AuthError) as exc:
         print(f"spsync: {exc}", file=sys.stderr)
-        return 1
+        return EXIT_ERROR
 
 
 if __name__ == "__main__":

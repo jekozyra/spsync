@@ -7,7 +7,7 @@ from spsync.inline import Seg, parse_inline, render_inline
 from spsync.mdparse import parse_body
 from spsync.ooxml import NS, qn
 from spsync.patch import apply_note
-from spsync.reader import join_items, load_document, read_items
+from spsync.reader import Item, join_items, load_document, read_items
 
 
 def make_doc() -> bytes:
@@ -43,12 +43,12 @@ def body_xml(data: bytes) -> bytes:
     return etree.tostring(doc.element.body, method="c14n")
 
 
-def note_for(data):
+def note_for(data: bytes) -> tuple[list[Item], str]:
     items = read_items(data)
     return items, join_items(items)
 
 
-def test_inline_roundtrip():
+def test_inline_roundtrip() -> None:
     segs = [Seg("a "), Seg("bold", b=True), Seg(" "), Seg("both", b=True, i=True), Seg(" x*y [z] 50% snake_case _u_")]
     md = render_inline(segs)
     back = parse_inline(md)
@@ -57,7 +57,7 @@ def test_inline_roundtrip():
     assert [s.fmt for s in back if s.text == "both"] == [(True, True, False)]
 
 
-def test_render_shape():
+def test_render_shape() -> None:
     _items, md = note_for(make_doc())
     assert "# Project plan" in md
     assert "**important**" in md and "*subtle*" in md
@@ -66,14 +66,14 @@ def test_render_shape():
     assert "| A | B |" in md
 
 
-def test_parse_matches_render():
+def test_parse_matches_render() -> None:
     items, md = note_for(make_doc())
     parsed = parse_body(md)
     assert [p.md for p in parsed] == [i.md for i in items]
     assert [p.t for p in parsed] == [i.t for i in items]
 
 
-def test_noop_push_leaves_body_untouched():
+def test_noop_push_leaves_body_untouched() -> None:
     data = make_doc()
     items, md = note_for(data)
     out, rep = apply_note(data, items, parse_body(md), author="Me")
@@ -81,7 +81,7 @@ def test_noop_push_leaves_body_untouched():
     assert body_xml(out) == body_xml(data)
 
 
-def test_edit_word_preserves_formatting():
+def test_edit_word_preserves_formatting() -> None:
     data = make_doc()
     items, md = note_for(data)
     md2 = md.replace("with a", "with one")
@@ -93,7 +93,7 @@ def test_edit_word_preserves_formatting():
     assert body_xml(out) != body_xml(data)
 
 
-def test_insert_list_item_uses_list_style():
+def test_insert_list_item_uses_list_style() -> None:
     data = make_doc()
     items, md = note_for(data)
     md2 = md.replace("- Second bullet", "- Second bullet\n- Third bullet")
@@ -101,10 +101,10 @@ def test_insert_list_item_uses_list_style():
     assert rep.inserted == 1
     doc = load_document(out)
     p = next(p for p in doc.paragraphs if p.text == "Third bullet")
-    assert p.style.name == "List Bullet"
+    assert p.style is not None and p.style.name == "List Bullet"
 
 
-def test_delete_and_heading_change():
+def test_delete_and_heading_change() -> None:
     data = make_doc()
     items, md = note_for(data)
     md2 = md.replace("Closing line.", "").replace("## Details", "### Details")
@@ -112,10 +112,10 @@ def test_delete_and_heading_change():
     doc = load_document(out)
     texts = [p.text for p in doc.paragraphs]
     assert "Closing line." not in texts
-    assert [p.style.name for p in doc.paragraphs if p.text == "Details"] == ["Heading 3"]
+    assert [p.style.name if p.style else None for p in doc.paragraphs if p.text == "Details"] == ["Heading 3"]
 
 
-def test_new_comment_and_reply():
+def test_new_comment_and_reply() -> None:
     data = make_doc()
     items, md = note_for(data)
     cid = next(i.id for i in items if i.t == "comment")
@@ -130,7 +130,7 @@ def test_new_comment_and_reply():
     assert md3.index("Please expand.") < md3.index("Done, expanded.") < md3.index("Closing line.")
 
 
-def test_resolve_comment():
+def test_resolve_comment() -> None:
     data = make_doc()
     items, md = note_for(data)
     md2 = md.replace("> [!comment] Alice Smith", "> [!comment] Alice Smith · resolved", 1)
@@ -140,7 +140,7 @@ def test_resolve_comment():
     assert "[!comment]- Alice Smith" in md3 and "resolved" in md3
 
 
-def test_suggest_mode_tracks_changes():
+def test_suggest_mode_tracks_changes() -> None:
     data = make_doc()
     items, md = note_for(data)
     md2 = md.replace("Closing line.", "Closing paragraph.").replace("- Second bullet", "- Second bullet\n- New bullet")
@@ -158,7 +158,7 @@ def test_suggest_mode_tracks_changes():
     assert any(i.locked and "tracked" in i.lock_reason for i in items3)
 
 
-def test_locked_table_edit_is_skipped():
+def test_locked_table_edit_is_skipped() -> None:
     data = make_doc()
     items, md = note_for(data)
     md2 = md.replace("| A | B |", "| A | C |")
@@ -171,17 +171,22 @@ def _png() -> bytes:
     import struct
     import zlib
 
-    def chunk(kind, data):
+    def chunk(kind: bytes, data: bytes) -> bytes:
         return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
 
     ihdr = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
-    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(b"\x00\xff\x00\x00")) + chunk(b"IEND", b"")
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", ihdr)
+        + chunk(b"IDAT", zlib.compress(b"\x00\xff\x00\x00"))
+        + chunk(b"IEND", b"")
+    )
 
 
 PNG = _png()
 
 
-def test_images_render_as_embeds():
+def test_images_render_as_embeds() -> None:
     from spsync.reader import read_items_and_media
 
     d = Document()
@@ -200,7 +205,7 @@ def test_images_render_as_embeds():
     assert rep.modified == 1 and f"![[{name}]]" in join_items(read_items(out))
 
 
-def test_page_break_paragraph_round_trips():
+def test_page_break_paragraph_round_trips() -> None:
     from docx.enum.text import WD_BREAK
 
     d = Document()
@@ -217,7 +222,7 @@ def test_page_break_paragraph_round_trips():
     assert not rep.changed and body_xml(out) == body_xml(data)
 
 
-def test_create_from_blank():
+def test_create_from_blank() -> None:
     d = Document()
     buf = io.BytesIO()
     d.save(buf)

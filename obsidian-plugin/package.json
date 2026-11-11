@@ -4,13 +4,22 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc --noEmit && node esbuild.mjs"
+    "build": "tsc --noEmit && node esbuild.ts",
+    "format": "oxfmt --ignore-path ../.gitignore --ignore-path .oxfmtignore .",
+    "format:check": "oxfmt --ignore-path ../.gitignore --ignore-path .oxfmtignore --check .",
+    "lint": "oxlint ."
   },
   "devDependencies": {
+    "@oxlint/plugins": "1.93.0",
     "@types/node": "^22.0.0",
     "builtin-modules": "^4.0.0",
     "esbuild": "^0.25.0",
     "obsidian": "^1.8.7",
+    "oxfmt": "^0.78.0",
+    "oxlint": "1.93.0",
     "typescript": "^5.8.0"
+  },
+  "engines": {
+    "node": ">=23.6"
   }
 }

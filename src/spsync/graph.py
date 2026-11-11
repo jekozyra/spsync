@@ -11,10 +11,16 @@ import httpx
 from .auth import Auth
 
 GRAPH = "https://graph.microsoft.com/v1.0"
+DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+REQUEST_TIMEOUT_SECONDS = 120
+MAX_ATTEMPTS = 5
+MAX_RETRY_WAIT_SECONDS = 30
+RETRY_STATUSES = (429, 503, 504)
+ERROR_TEXT_CHARS = 200
 
 
 class GraphError(Exception):
-    def __init__(self, status: int, code: str, message: str):
+    def __init__(self, status: int, code: str, message: str) -> None:
         super().__init__(f"{status} {code}: {message}")
         self.status = status
         self.code = code
@@ -26,35 +32,58 @@ def share_id(url: str) -> str:
     return "u!" + enc
 
 
-class Graph:
-    def __init__(self, auth: Auth | None = None):
-        self.auth = auth or Auth()
-        self.http = httpx.Client(timeout=120, follow_redirects=True)
+def _error(resp: httpx.Response) -> GraphError:
+    try:
+        err = resp.json().get("error", {})
+    except ValueError:
+        err = {}
+    return GraphError(resp.status_code, err.get("code", "error"), err.get("message", resp.text[:ERROR_TEXT_CHARS]))
 
-    def _req(self, method: str, url: str, *, raw: bool = False, headers: dict | None = None, **kw):
+
+class Graph:
+    def __init__(self, auth: Auth | None = None) -> None:
+        self.auth = auth or Auth()
+        self.http = httpx.Client(timeout=REQUEST_TIMEOUT_SECONDS, follow_redirects=True)
+
+    def _send(
+        self,
+        method: str,
+        url: str,
+        *,
+        headers: dict[str, str] | None = None,
+        content: bytes | None = None,
+        json: dict | None = None,
+    ) -> httpx.Response:
+        """Send one request. Refresh the token once on 401, and retry throttled requests with backoff."""
         if not url.startswith("http"):
             url = GRAPH + url
         force = False
-        for attempt in range(5):
+        for attempt in range(MAX_ATTEMPTS):
             h = {"Authorization": f"Bearer {self.auth.token(force_refresh=force)}"}
             h.update(headers or {})
-            resp = self.http.request(method, url, headers=h, **kw)
+            resp = self.http.request(method, url, headers=h, content=content, json=json)
             if resp.status_code == 401 and not force:
                 force = True
                 continue
-            if resp.status_code in (429, 503, 504) and attempt < 4:
-                time.sleep(min(float(resp.headers.get("Retry-After", 2 ** attempt)), 30))
+            if resp.status_code in RETRY_STATUSES and attempt < MAX_ATTEMPTS - 1:
+                time.sleep(min(float(resp.headers.get("Retry-After", 2**attempt)), MAX_RETRY_WAIT_SECONDS))
                 continue
             if resp.status_code >= 400:
-                try:
-                    err = resp.json().get("error", {})
-                except ValueError:
-                    err = {}
-                raise GraphError(resp.status_code, err.get("code", "error"), err.get("message", resp.text[:200]))
-            if raw:
-                return resp
-            return resp.json() if resp.content else {}
+                raise _error(resp)
+            return resp
         raise GraphError(resp.status_code, "retry", "Gave up after retries")
+
+    def _req(
+        self,
+        method: str,
+        url: str,
+        *,
+        headers: dict[str, str] | None = None,
+        content: bytes | None = None,
+        json: dict | None = None,
+    ) -> dict:
+        resp = self._send(method, url, headers=headers, content=content, json=json)
+        return resp.json() if resp.content else {}
 
     # ---- identity ----
     def me(self) -> dict:
@@ -81,7 +110,11 @@ class Graph:
             found = self._resolve_doc_aspx(ref)
             if found:
                 return found
-            raise GraphError(exc.status, exc.code, f"Could not resolve that link. In SharePoint use Share > Copy link, or find the doc with `spsync search`. ({exc.message})") from exc
+            raise GraphError(
+                exc.status,
+                exc.code,
+                f"Could not resolve that link. In SharePoint use Share > Copy link, or find the doc with `spsync search`. ({exc.message})",
+            ) from exc
 
     def _resolve_doc_aspx(self, url: str) -> dict | None:
         """Word Online URLs (Doc.aspx?sourcedoc={guid}&file=Name.docx) are not sharing links."""
@@ -103,16 +136,16 @@ class Graph:
         return None
 
     def download(self, drive_id: str, item_id: str) -> bytes:
-        return self._req("GET", f"/drives/{drive_id}/items/{item_id}/content", raw=True).content
+        return self._send("GET", f"/drives/{drive_id}/items/{item_id}/content").content
 
     def upload(self, drive_id: str, item_id: str, data: bytes, etag: str | None) -> dict:
-        headers = {"Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+        headers = {"Content-Type": DOCX_MIME}
         if etag:
             headers["If-Match"] = etag
         return self._req("PUT", f"/drives/{drive_id}/items/{item_id}/content", content=data, headers=headers)
 
     def create(self, drive_id: str, parent_id: str, name: str, data: bytes) -> dict:
-        headers = {"Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+        headers = {"Content-Type": DOCX_MIME}
         path = f"/drives/{drive_id}/items/{parent_id}:/{quote(name)}:/content?@microsoft.graph.conflictBehavior=fail"
         return self._req("PUT", path, content=data, headers=headers)
 

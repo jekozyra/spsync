@@ -38,27 +38,35 @@ def make(tag: str, attrs: dict[str, str] | None = None, text: str | None = None)
     return e
 
 
-def local(e) -> str:
+def local(e: etree._Element) -> str:
     return etree.QName(e).localname
 
 
-def ns_of(e) -> str:
+def ns_of(e: etree._Element) -> str:
     return etree.QName(e).namespace or ""
 
 
-def elements(parent):
+def elements(parent: etree._Element) -> list[etree._Element]:
     """Child elements, skipping XML comments and processing instructions."""
     return [c for c in parent if isinstance(c.tag, str)]
 
 
-def is_on(e) -> bool:
+def int_attr(e: etree._Element, tag: str) -> int:
+    """An integer attribute, such as a comment's w:id. A missing attribute is a malformed document."""
+    v = e.get(qn(tag))
+    if v is None:
+        raise ValueError(f"<{local(e)}> has no {tag} attribute")
+    return int(v)
+
+
+def is_on(e: etree._Element | None) -> bool:
     if e is None:
         return False
     v = e.get(qn("w:val"))
     return v is None or v.lower() not in ("0", "false", "off", "none")
 
 
-def wval(e, default=None):
+def wval(e: etree._Element | None, default: str | None = None) -> str | None:
     if e is None:
         return default
     return e.get(qn("w:val"), default)
@@ -74,29 +82,98 @@ def now_iso() -> str:
 
 # Child order from the WordprocessingML schema. Word Online rejects out-of-order children.
 RPR_ORDER = [
-    "rStyle", "rFonts", "b", "bCs", "i", "iCs", "caps", "smallCaps", "strike", "dstrike",
-    "outline", "shadow", "emboss", "imprint", "noProof", "snapToGrid", "vanish", "webHidden",
-    "color", "spacing", "w", "kern", "position", "sz", "szCs", "highlight", "u", "effect",
-    "bdr", "shd", "fitText", "vertAlign", "rtl", "cs", "em", "lang", "eastAsianLayout",
-    "specVanish", "oMath", "ins", "del", "moveFrom", "moveTo", "rPrChange",
+    "rStyle",
+    "rFonts",
+    "b",
+    "bCs",
+    "i",
+    "iCs",
+    "caps",
+    "smallCaps",
+    "strike",
+    "dstrike",
+    "outline",
+    "shadow",
+    "emboss",
+    "imprint",
+    "noProof",
+    "snapToGrid",
+    "vanish",
+    "webHidden",
+    "color",
+    "spacing",
+    "w",
+    "kern",
+    "position",
+    "sz",
+    "szCs",
+    "highlight",
+    "u",
+    "effect",
+    "bdr",
+    "shd",
+    "fitText",
+    "vertAlign",
+    "rtl",
+    "cs",
+    "em",
+    "lang",
+    "eastAsianLayout",
+    "specVanish",
+    "oMath",
+    "ins",
+    "del",
+    "moveFrom",
+    "moveTo",
+    "rPrChange",
 ]
 PPR_ORDER = [
-    "pStyle", "keepNext", "keepLines", "pageBreakBefore", "framePr", "widowControl", "numPr",
-    "suppressLineNumbers", "pBdr", "shd", "tabs", "suppressAutoHyphens", "kinsoku", "wordWrap",
-    "overflowPunct", "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd",
-    "snapToGrid", "spacing", "ind", "contextualSpacing", "mirrorIndents", "suppressOverlap",
-    "jc", "textDirection", "textAlignment", "textboxTightWrap", "outlineLvl", "divId",
-    "cnfStyle", "rPr", "sectPr", "pPrChange",
+    "pStyle",
+    "keepNext",
+    "keepLines",
+    "pageBreakBefore",
+    "framePr",
+    "widowControl",
+    "numPr",
+    "suppressLineNumbers",
+    "pBdr",
+    "shd",
+    "tabs",
+    "suppressAutoHyphens",
+    "kinsoku",
+    "wordWrap",
+    "overflowPunct",
+    "topLinePunct",
+    "autoSpaceDE",
+    "autoSpaceDN",
+    "bidi",
+    "adjustRightInd",
+    "snapToGrid",
+    "spacing",
+    "ind",
+    "contextualSpacing",
+    "mirrorIndents",
+    "suppressOverlap",
+    "jc",
+    "textDirection",
+    "textAlignment",
+    "textboxTightWrap",
+    "outlineLvl",
+    "divId",
+    "cnfStyle",
+    "rPr",
+    "sectPr",
+    "pPrChange",
 ]
 
 
-def insert_ordered(parent, child, order: list[str]):
+def insert_ordered(parent: etree._Element, child: etree._Element, order: list[str]) -> etree._Element:
     """Insert `child` into `parent`, replacing a same-named child, honoring schema order."""
     name = local(child)
-    for existing in parent.findall(child.tag):
+    for existing in parent.findall(etree.QName(child)):
         parent.remove(existing)
     rank = order.index(name) if name in order else len(order)
-    for i, c in enumerate(elements(parent)):
+    for c in elements(parent):
         cname = local(c)
         crank = order.index(cname) if cname in order else len(order)
         if crank > rank:
@@ -106,7 +183,7 @@ def insert_ordered(parent, child, order: list[str]):
     return child
 
 
-def ensure_child(parent, tag: str, order: list[str]):
+def ensure_child(parent: etree._Element, tag: str, order: list[str]) -> etree._Element:
     found = parent.find(qn(tag))
     if found is not None:
         return found

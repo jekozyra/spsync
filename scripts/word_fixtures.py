@@ -33,7 +33,7 @@ def base_doc() -> bytes:
     return buf.getvalue()
 
 
-def main(out_dir: str):
+def main(out_dir: str) -> None:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     data = base_doc()
@@ -44,7 +44,10 @@ def main(out_dir: str):
     edited = (
         md.replace("text.", "text, now edited with a [link](https://example.com).")
         .replace("- Second bullet", "- Second bullet\n\t- Nested bullet\n- Third bullet")
-        .replace("Closing line.", "Closing line, rewritten.\n\n> [!comment] New comment from Obsidian\n\n| X | Y |\n| --- | --- |\n| new | table |")
+        .replace(
+            "Closing line.",
+            "Closing line, rewritten.\n\n> [!comment] New comment from Obsidian\n\n| X | Y |\n| --- | --- |\n| new | table |",
+        )
         .replace("> Please expand.", f"> Please expand.\n\n> [!reply] re:{cid}\n> Expanded it.")
         .replace("## Details", "### Details")
     )

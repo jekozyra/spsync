@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "httpx>=0.28.1",
+    "lxml>=6.0",
     "merge3>=1.0.0",
     "msal>=1.39.0",
     "msal-extensions>=1.3.1",
@@ -25,6 +26,37 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "anti-slop-python>=0.2.1",
+    "lefthook>=2.2.2",
     "pytest>=9.2.0",
-    "ruff>=0.17.4",
+    "ruff>=0.16.5,<0.17",
+    "ty>=0.0.100",
+    "types-lxml>=2025.0",
 ]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+# Mirrors the anti-slop-python default policy, so a plain `ruff check` enforces the same rules.
+[tool.ruff.lint]
+extend-select = ["ANN", "ASYNC2", "BLE001", "C901", "E722", "F403", "PLR0915", "TID251"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-statements = 40
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"mock.patch".msg = "Avoid patching state. Pass the dependency explicitly instead."
+"unittest.mock.patch".msg = "Avoid patching state. Pass the dependency explicitly instead."
+
+[tool.anti-slop-python]
+max-module-lines = 500
+max-test-module-lines = 1500
+test-file-patterns = ["tests/**"]
+
+[tool.pytest.ini_options]
+addopts = "-m 'not integration'"
+markers = ["integration: needs Word for Mac, the OneDrive app, or a Microsoft tenant"]
