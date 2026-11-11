@@ -40,6 +40,18 @@ def default_roots() -> list[Path]:
     return sorted(p for p in cloud.glob("OneDrive*") if p.is_dir()) if cloud.exists() else []
 
 
+def link_file_name(url: str) -> str | None:
+    """File name from a SharePoint/OneDrive link: the Doc.aspx ?file= parameter or the last path part."""
+    from urllib.parse import parse_qs, unquote, urlparse
+
+    u = urlparse(url)
+    name = (parse_qs(u.query).get("file") or [None])[0]
+    if not name:
+        last = unquote(u.path.rsplit("/", 1)[-1])
+        name = last if last.lower().endswith(".docx") else None
+    return name
+
+
 def lock_files(path: Path) -> list[Path]:
     """Word's owner files: ~$ plus the name, or ~$ replacing the first two characters."""
     names = {"~$" + path.name, "~$" + path.name[2:]}
@@ -187,6 +199,20 @@ class Router:
         if not is_url and (ref.startswith((LOCAL + ":", "file://", "/", "~", ".")) or Path(ref).expanduser().exists() or self.mode == LOCAL):
             return self.local.resolve(ref)
         if is_url and self.mode == LOCAL:
+            name = link_file_name(ref)
+            if name:
+                matches = [h for h in self.local.search(name, size=50) if h["name"].lower() == name.lower()]
+                if len(matches) == 1:
+                    return matches[0]
+                if len(matches) > 1:
+                    where = "; ".join(self.local._where(Path(m["id"])) for m in matches)
+                    raise GraphError(409, "ambiguous", f"Several synced copies of {name} ({where}). Pull one by path.")
+                raise GraphError(
+                    404,
+                    "notSynced",
+                    f"{name} isn't synced to this Mac yet. In OneDrive on the web, open Shared, find it (or the folder "
+                    "it's in), and choose Add shortcut to My files. Then paste the link again.",
+                )
             raise GraphError(
                 400,
                 "localMode",
