@@ -2,5 +2,11 @@
   "base": {
     "name": "main",
     "hash": "7ec8ad7db725111756bd41a9bac43a2d7b2e9515"
-  }
+  },
+  "pr": {
+    "number": 24,
+    "url": "https://github.com/jekozyra/spsync/pull/24"
+  },
+  "pr_title": "build(tooling): remove Intel Mac support from the build",
+  "pr_description": "## Goal\n\nRemove the Intel Mac support from the build. spsync supports only Apple silicon Macs, and the release ships only an arm64 build.\n\n## Summary\n\nThe standalone build prototype added support for x86_64 builds. This change removes that support.\n\n- `pyproject.toml` no longer constrains cryptography to versions below 49 on Intel Macs. That constraint existed because cryptography 49 and later publish no Intel macOS wheels.\n- `uv.lock` now resolves one cryptography version, 50.0.2. The lock no longer contains the constraint manifest or the x86_64 resolution fork.\n- `scripts/build_standalone.sh` states that it builds for Apple silicon only. The script now exits with a message on stderr when `uname -m` is not `arm64`.\n\nThe change does not affect docx reading or patching.\n\n## Testing\n\n- `uv run ruff format --check`, `uv run ruff check`, `uv run ty check`, `uv run anti-slop-python src tests`, and `uv run pytest` pass.\n- `uv lock --check` passes.\n- `git grep -in intel` returns no matches outside the lockfiles.\n- `scripts/build_standalone.sh` on an Apple silicon Mac builds `dist/spsync-macos-arm64.tar.gz`, and the built `spsync --help` runs.\n- The exit on a Mac that is not arm64 was checked by inspection and with `sh -n`. No Intel Mac was available to run the script.\n\n## Issue\n\nCloses #23\n"
 }
