@@ -177,8 +177,14 @@ export default class SpsyncPlugin extends Plugin {
     await this.syncFile(f, suggest, true);
   }
 
+  isWord(file: TFile): boolean {
+    return String(this.app.metadataCache.getFileCache(file)?.frontmatter?.spsync ?? "").startsWith("word:");
+  }
+
   async syncAll(loud: boolean) {
     for (const f of this.app.vault.getMarkdownFiles()) {
+      // Word-backed notes open Word to check for changes, so only sync them on request.
+      if (!loud && this.isWord(f)) continue;
       if (this.isLinked(f) && !this.timers.has(f.path)) await this.syncFile(f, this.settings.suggestByDefault, loud);
     }
   }

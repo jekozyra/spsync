@@ -131,6 +131,13 @@ def test_sync_merges_disjoint_edits(env):
     assert "Gamma paragraph, remote." in note.read_text()
 
 
+def test_adjacent_edits_merge_without_conflict():
+    from spsync.core import merge_items
+
+    md, n = merge_items(["## H", "Para.", "Tail."], ["## Renamed", "Para.", "Tail."], ["## H", "Para, remote.", "Tail."])
+    assert n == 0 and "## Renamed" in md and "Para, remote." in md
+
+
 def test_sync_conflict_then_resolve(env):
     s, g, note = env
 
