@@ -167,6 +167,56 @@ def test_locked_table_edit_is_skipped():
     assert body_xml(out) == body_xml(data)
 
 
+def _png() -> bytes:
+    import struct
+    import zlib
+
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+
+    ihdr = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(b"\x00\xff\x00\x00")) + chunk(b"IEND", b"")
+
+
+PNG = _png()
+
+
+def test_images_render_as_embeds():
+    from spsync.reader import read_items_and_media
+
+    d = Document()
+    d.add_paragraph("Before the picture.")
+    d.add_picture(io.BytesIO(PNG))
+    d.add_paragraph("After.")
+    buf = io.BytesIO()
+    d.save(buf)
+    data = buf.getvalue()
+    items, media = read_items_and_media(data)
+    md = join_items(items)
+    (name,) = media
+    assert f"![[{name}]]" in md and media[name] == PNG
+    assert [p.md for p in parse_body(md)] == [i.md for i in items]
+    out, rep = apply_note(data, items, parse_body(md.replace("After.", "After, edited.")), author="Me")
+    assert rep.modified == 1 and f"![[{name}]]" in join_items(read_items(out))
+
+
+def test_page_break_paragraph_round_trips():
+    from docx.enum.text import WD_BREAK
+
+    d = Document()
+    d.add_paragraph("One.")
+    d.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
+    d.add_paragraph("Two.")
+    buf = io.BytesIO()
+    d.save(buf)
+    data = buf.getvalue()
+    items, md = note_for(data)
+    assert "%% page break %%" in md
+    assert [p.md for p in parse_body(md)] == [i.md for i in items]
+    out, rep = apply_note(data, items, parse_body(md), author="Me")
+    assert not rep.changed and body_xml(out) == body_xml(data)
+
+
 def test_create_from_blank():
     d = Document()
     buf = io.BytesIO()

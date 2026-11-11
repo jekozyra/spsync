@@ -28,6 +28,8 @@ class Seg:
     link_el: Any = field(default=None, compare=False, repr=False)
     # Pending tracked change, shown as ==inserted== or ~~deleted~~ (display only).
     rev: str | None = None
+    # Markdown emitted verbatim instead of the text (for example an image embed).
+    raw: str | None = None
 
     @property
     def fmt(self):
@@ -83,6 +85,9 @@ def _merge(segs: list[Seg]) -> list[Seg]:
     for s in segs:
         if not s.text:
             continue
+        if s.raw is not None or (out and out[-1].raw is not None):
+            out.append(s)
+            continue
         if out and out[-1].fmt == s.fmt and out[-1].link == s.link and out[-1].rev == s.rev and "\n" not in s.text and "\n" not in out[-1].text:
             out[-1] = Seg(out[-1].text + s.text, s.b, s.i, s.s, s.link, rev=s.rev)
         else:
@@ -104,6 +109,9 @@ def render_inline(segs: list[Seg]) -> str:
     # Split line breaks into their own segments so markers never span them.
     pieces: list[Seg] = []
     for s in segs:
+        if s.raw is not None:
+            pieces.append(s)
+            continue
         for part in re.split(r"(\n)", s.text):
             if part:
                 pieces.append(Seg(part, s.b, s.i, s.s, s.link, rev=s.rev))
@@ -112,12 +120,18 @@ def render_inline(segs: list[Seg]) -> str:
     k = 0
     while k < len(merged):
         seg = merged[k]
+        if seg.raw is not None:
+            out.append(seg.raw)
+            k += 1
+            continue
         if seg.link:
             group = []
             while k < len(merged) and merged[k].link == seg.link:
                 group.append(merged[k])
                 k += 1
-            inner = "".join("<br>" if g.text == "\n" else _wrap(g.text, g.b, g.i, g.s, g.rev) for g in group)
+            inner = "".join(
+                g.raw if g.raw is not None else "<br>" if g.text == "\n" else _wrap(g.text, g.b, g.i, g.s, g.rev) for g in group
+            )
             out.append(f"[{inner}]({_encode_url(seg.link)})")
             continue
         out.append("<br>" if seg.text == "\n" else _wrap(seg.text, seg.b, seg.i, seg.s, seg.rev))
