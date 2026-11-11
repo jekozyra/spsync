@@ -110,7 +110,8 @@ def test_doc_aspx_link_finds_synced_copy(env):
         "?sourcedoc=%7B7017%7D&file=Budget%20Memo.docx&action=default"
     )
     note = s.pull(url)
-    assert note.name == "Budget Memo.md" and str(doc.resolve()) in note.read_text()
+    b, _ = s.binding_for(note)
+    assert note.name == "Budget Memo.md" and b.item_id == str(doc.resolve())
 
 
 def test_unchanged_sync_is_quiet(env):
