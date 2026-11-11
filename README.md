@@ -61,6 +61,7 @@ spsync status --remote
 spsync watch                       # keep every linked note in sync
 spsync open note.md                # open the document in the browser
 spsync unlink note.md
+spsync --version                   # print the CLI version
 ```
 
 In Obsidian, the same actions are available from the command palette ("Find and open a SharePoint document", "Sync this note", "Comment on this paragraph", and so on).
@@ -106,10 +107,10 @@ The plugin's settings tab sets the CLI path, the author name, automatic sync, th
 |---|---|
 | `src/spsync/` | The CLI: `cli.py` commands, `config.py` settings, `reader/` and `patch/` docx parsing and patching, `local.py`, `word/`, and `graph.py` backends |
 | `obsidian-plugin/` | The Obsidian plugin, which shells out to the CLI |
-| `scripts/` | The standalone build, and helpers that generate Word fixtures and check them in Word |
+| `scripts/` | The standalone build, the manifest version check, and helpers that generate Word fixtures and check them in Word |
 | `tests/` | pytest suite and `.docx` fixtures |
 
-Install the git hooks once. The pre-commit hook runs ruff, ty, anti-slop-python, pytest, and the plugin's Oxfmt, Oxlint, and build checks. [`CODING_STANDARDS.md`](CODING_STANDARDS.md) lists every check.
+Install the git hooks once. The pre-commit hook runs ruff, ty, anti-slop-python, pytest, and the plugin's Oxfmt, Oxlint, and build checks. When a commit changes `pyproject.toml`, `obsidian-plugin/manifest.json`, or `obsidian-plugin/package.json`, the hook also runs `scripts/check_versions.py`, which fails when the three versions differ. [`CODING_STANDARDS.md`](CODING_STANDARDS.md) lists every check.
 
 ```sh
 uv sync --locked
