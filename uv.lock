@@ -28,6 +28,19 @@ wheels = [
 ]
 
 [[package]]
+name = "beautifulsoup4"
+version = "4.15.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "soupsieve" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/43/65/318323f98dbee45d42dff61d8f047181bc6f2268a9068cfad035a46be5af/beautifulsoup4-4.15.0.tar.gz", hash = "sha256:288e3ca7d54b06f2ac191970bc275c1939cb46d450b255bf6718b04aa37ab4f7", size = 632571, upload-time = "2026-06-07T16:44:20.453Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/88/c6/92fcd42f1ba33e1184263f25bfabf3d27c383410470f169e4b8163bf9c17/beautifulsoup4-4.15.0-py3-none-any.whl", hash = "sha256:d6f88de62e1d4e38ecb1077eb9724cd0eff29d2a08ca16a401e9b9e93f117cf9", size = 109924, upload-time = "2026-06-07T16:44:21.566Z" },
+]
+
+[[package]]
 name = "certifi"
 version = "2026.10.23"
 source = { registry = "https://pypi.org/simple" }
@@ -294,6 +307,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/10/bf/8d6ebc7dded797bd0f0160d52188021211f011a2b164ef0ae1dac4587465/cryptography-50.0.2-cp39-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:7a8701d6b584d76e909e3d305b7d126b41439876a5aaf76cddc67fc230eafa2e", size = 4897738, upload-time = "2026-09-30T15:29:43.106Z" },
     { url = "https://files.pythonhosted.org/packages/d4/aa/f3f6e0de7e6253b8baa8b2d8fb9d50924fa75cee3d4624bd4bc1208ee923/cryptography-50.0.2-cp39-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:ce47f66801c20ec6c6632453bb5960fe38939e9306970b48b3a5a26de7745d94", size = 5058280, upload-time = "2026-09-30T15:29:44.827Z" },
     { url = "https://files.pythonhosted.org/packages/f6/b6/a1faf3a27ae9405fb34b1713cc73b2d8a26b04d5c561578fa2e6ef3e5bb9/cryptography-50.0.2-cp39-abi3-win_amd64.whl", hash = "sha256:4e81d95e5bafc2d6e34e4bed780e53e4d5b9a2f928573428aa4d35fbec1eb0de", size = 3854095, upload-time = "2026-09-30T15:29:46.782Z" },
+]
+
+[[package]]
+name = "cssselect"
+version = "1.6.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c8/8b/dc32df939ab541fca6ee8964d26aa231dbe231cdc2b2713228161441ba9c/cssselect-1.6.0.tar.gz", hash = "sha256:8c83a7139e97b93aa5ebdc0f46e785f7056a08a8bf201e597a6a2629d7eb11db", size = 51743, upload-time = "2026-10-09T20:05:09.484Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/08/ae/f24b3aac56ba91a29c9d3a31c07a9ad4e9eb500e5d212742bb6d348edaef/cssselect-1.6.0-py3-none-any.whl", hash = "sha256:6df6eab9b264c0f2092a6e386b33610e1684a25e27925ecebe25e3d97cbf3525", size = 22244, upload-time = "2026-10-09T20:05:08.215Z" },
 ]
 
 [[package]]
@@ -647,11 +669,21 @@ wheels = [
 ]
 
 [[package]]
+name = "soupsieve"
+version = "4.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/95/48/21a393ff731b8f928fa4f8176f9a7ceba2252ee60a5149f25b45c292aa5c/soupsieve-4.1.tar.gz", hash = "sha256:ca9abf7126667010d8f6e9b39bfc1bc3b23c8aed9bcb0f54a754dde969bb8aab", size = 161955, upload-time = "2026-11-10T01:59:50.399Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/88/73/6a2087c72975cfc07394623bca8d17654342ea4055ae368deafe5a81a542/soupsieve-4.1-py3-none-any.whl", hash = "sha256:e4d667b3974ce6e038e7390486b8093369854a1d345ffdd4c121dfc4a782e809", size = 52302, upload-time = "2026-11-10T01:59:48.571Z" },
+]
+
+[[package]]
 name = "spsync"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
+    { name = "lxml" },
     { name = "merge3" },
     { name = "msal" },
     { name = "msal-extensions" },
@@ -666,11 +698,13 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
     { name = "ty" },
+    { name = "types-lxml" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "lxml", specifier = ">=6.0" },
     { name = "merge3", specifier = ">=1.0.0" },
     { name = "msal", specifier = ">=1.39.0" },
     { name = "msal-extensions", specifier = ">=1.3.1" },
@@ -685,6 +719,7 @@ dev = [
     { name = "pytest", specifier = ">=9.2.0" },
     { name = "ruff", specifier = ">=0.16.5,<0.17" },
     { name = "ty", specifier = ">=0.0.100" },
+    { name = "types-lxml", specifier = ">=2025.0" },
 ]
 
 [[package]]
@@ -710,6 +745,42 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/2f/1b/c845fcda0d2549c4d7b6023dde2cbac8a108253e3fe7ceae02b2e1f58fab/ty-0.0.100-py3-none-win32.whl", hash = "sha256:6eeb12edfb3608427aa657983b1ddad1d0c73915752d092bfe5c35315804b071", size = 13789591, upload-time = "2026-11-09T20:16:20.28Z" },
     { url = "https://files.pythonhosted.org/packages/3b/35/2becc700b2384a2d0b373626ed59c6706d2089888a14721199dba1aa3094/ty-0.0.100-py3-none-win_amd64.whl", hash = "sha256:01c230d3046f0d5e8ab6e1def4131aab21659a1d290cc88b39b4fde04bfad0c0", size = 14440120, upload-time = "2026-11-09T20:16:22.858Z" },
     { url = "https://files.pythonhosted.org/packages/5f/d5/5c46cefc47f3c18c09caf5a370eb9a70945d9f86fd79ac6e0a5e40180fe4/ty-0.0.100-py3-none-win_arm64.whl", hash = "sha256:e5ef15fae8544582d03c78b5287abd18eac78e5f21dff80b5febb2e038e97205", size = 13909648, upload-time = "2026-11-09T20:16:25.274Z" },
+]
+
+[[package]]
+name = "types-html5lib"
+version = "1.1.11.20260518"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "types-webencodings" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b8/5a/0c708d1b0d35ad48b6a223c77c4a882fd016b40c25becb082a92e02a9c00/types_html5lib-1.1.11.20260518.tar.gz", hash = "sha256:4f33c087cb1119d65c4c80eca4323c2b501f9eaf8af9616b8b732ed4d8eae8fa", size = 18420, upload-time = "2026-05-18T06:07:23.662Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4d/d0/b088b9f11eb69637d6826843f06caaff60247156735a25512922d3dc2c13/types_html5lib-1.1.11.20260518-py3-none-any.whl", hash = "sha256:9baa7912224ebb37027c5ccb7e3768e43ea47b1dfdd977e7ddc4b0a4a550584d", size = 24339, upload-time = "2026-05-18T06:07:22.876Z" },
+]
+
+[[package]]
+name = "types-lxml"
+version = "2026.2.16"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "beautifulsoup4" },
+    { name = "cssselect" },
+    { name = "types-html5lib" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/dd/ad/c70ac8cbdc28eb58a17301c69b4925af54b614e47f9b2ebc9de5cc10f786/types_lxml-2026.2.16.tar.gz", hash = "sha256:b3a1340cc06db98d541c785732f6f68bea438daff4e2b7809ef748d545d01406", size = 161204, upload-time = "2026-02-17T02:34:50.855Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5f/5c/03ec9befbf4bb5309bfd576c6a5ac1c75633f78f6b64cf1f594e97cd3d23/types_lxml-2026.2.16-py3-none-any.whl", hash = "sha256:5dd81ffa54830e5f361988737c5f1d6a0ae48b2742790637ec560df790ea0401", size = 97040, upload-time = "2026-02-17T02:34:49.286Z" },
+]
+
+[[package]]
+name = "types-webencodings"
+version = "0.6.0.20261104"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/63/b8/722e153333019ac643dfac24be7c8d2fa21cbea791c94c39a1c58f413211/types_webencodings-0.6.0.20261104.tar.gz", hash = "sha256:3021d7ea7011a4a51a43b2dc4c0e4856c8d9b1bb1a1a3d2500ab177224225b08", size = 7818, upload-time = "2026-11-04T08:13:58.651Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cb/3b/93a20758bf4b0a388a97672c7bd8212856bf744f6894fdaa8d2f877815cd/types_webencodings-0.6.0.20261104-py3-none-any.whl", hash = "sha256:a719903a309f35d43a99461e801df94af2def074dec2694423c7a2601ddcc45d", size = 8577, upload-time = "2026-11-04T08:13:57.726Z" },
 ]
 
 [[package]]
