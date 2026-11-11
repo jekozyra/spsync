@@ -1,4 +1,4 @@
-"""Word app operations: open, inspect, save a copy, and close cloud documents."""
+"""Word app operations: open, inspect, save a copy, and close cloud documents, and check Automation access."""
 
 from __future__ import annotations
 
@@ -18,6 +18,13 @@ LOAD_SETTLE_SECONDS = 2
 COPY_HASH_CHARS = 10
 # Characters that `ms-word:` links keep unescaped in a SharePoint URL.
 URL_SAFE = ":/?&=%#~+,;@!$'()*"
+WORD_BUNDLE_ID = "com.microsoft.Word"
+WORD_LAUNCH_TIMEOUT_SECONDS = 60
+WORD_LAUNCH_POLL_SECONDS = 0.5
+# The first Apple event can wait on the macOS permission prompt until the user answers.
+PERMISSION_TIMEOUT_SECONDS = 300
+# osascript ends its message with this code when macOS denies Automation access to Word.
+NOT_AUTHORIZED_CODE = "(-1743)"
 
 
 def open_docs() -> list[tuple[str, bool]]:
@@ -115,6 +122,44 @@ end tell"""
     data = dest.read_bytes()
     dest.unlink(missing_ok=True)
     return data
+
+
+def _word_running() -> bool:
+    return osa(f'application id "{WORD_BUNDLE_ID}" is running') == "true"
+
+
+def _start_hidden() -> None:
+    subprocess.run(["open", "-g", "-j", "-b", WORD_BUNDLE_ID], check=False)
+    deadline = time.time() + WORD_LAUNCH_TIMEOUT_SECONDS
+    while not _word_running():
+        if time.time() > deadline:
+            raise WordError("Word did not start.", 504, "timeout")
+        time.sleep(WORD_LAUNCH_POLL_SECONDS)
+
+
+def automation_allowed() -> bool:
+    """Whether macOS lets this process control Word through Apple events.
+
+    When Word is closed, this starts Word hidden and in the background, and quits Word afterward.
+    The first call can show the macOS permission prompt, and waits for the answer.
+    Raises WordError when Word does not start or does not answer.
+    """
+    started = not _word_running()
+    if started:
+        _start_hidden()
+    try:
+        osa(f'tell application id "{WORD_BUNDLE_ID}" to get name', timeout=PERMISSION_TIMEOUT_SECONDS)
+    except WordError as exc:
+        if exc.message.endswith(NOT_AUTHORIZED_CODE):
+            return False
+        raise
+    finally:
+        if started:
+            try:
+                osa(f'tell application id "{WORD_BUNDLE_ID}" to quit saving no')
+            except WordError:
+                pass  # Word without permission ignores quit; it stays hidden until the user quits it.
+    return True
 
 
 def recent_files() -> list[tuple[str, str]]:
