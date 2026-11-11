@@ -32,17 +32,10 @@ def _session_for_note(note: Path) -> Session:
 
 
 def cmd_login(args):
-    cfg = load_config()
-    if args.client:
-        cfg["client_id"] = args.client
-        save_config(cfg)
     auth = Auth()
     auth.login(device=args.device)
     me = Graph(auth).me()
-    cfg = load_config()
-    cfg["backend"] = "graph"
-    save_config(cfg)
-    print(f"Signed in as {me.get('displayName')} <{me.get('mail') or me.get('userPrincipalName')}>. Backend set to graph.")
+    print(f"Signed in as {me.get('displayName')} <{me.get('mail') or me.get('userPrincipalName')}>")
 
 
 def cmd_mode(args):
@@ -235,7 +228,6 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("login", help="Sign in to Microsoft 365")
     s.add_argument("--device", action="store_true", help="Use a device code instead of a browser window")
-    s.add_argument("--client", help="App to sign in as: office, teams, or a client id")
     s.set_defaults(fn=cmd_login)
     sub.add_parser("logout", help="Forget cached tokens").set_defaults(fn=cmd_logout)
     s = sub.add_parser("mode", help="Show or set the backend (local OneDrive files, or Graph)")
