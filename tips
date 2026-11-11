@@ -1,4 +1,5 @@
 {
   "jillian/10-doctor-cli": "e366660c219dc5ef0155b85e01d8a08c69761e98",
-  "jillian/10-plugin-check-setup": "e366660c219dc5ef0155b85e01d8a08c69761e98"
+  "jillian/10-plugin-check-setup": "e366660c219dc5ef0155b85e01d8a08c69761e98",
+  "jillian/15-standalone-build-prototype": "9463b8a136cddf49a0dc39d7b398cd094ed63462"
 }
