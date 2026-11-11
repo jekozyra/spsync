@@ -9,7 +9,8 @@ from __future__ import annotations
 import re
 import string
 from dataclasses import dataclass, field
-from typing import Any
+
+from lxml import etree
 
 PUNCT = set(string.punctuation)
 BR_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
@@ -24,15 +25,15 @@ class Seg:
     s: bool = False
     link: str | None = None
     # Source run properties and hyperlink element when read from a document.
-    rpr: Any = field(default=None, compare=False, repr=False)
-    link_el: Any = field(default=None, compare=False, repr=False)
+    rpr: etree._Element | None = field(default=None, compare=False, repr=False)
+    link_el: etree._Element | None = field(default=None, compare=False, repr=False)
     # Pending tracked change, shown as ==inserted== or ~~deleted~~ (display only).
     rev: str | None = None
     # Markdown emitted verbatim instead of the text (for example an image embed).
     raw: str | None = None
 
     @property
-    def fmt(self):
+    def fmt(self) -> tuple[bool, bool, bool]:
         return (self.b, self.i, self.s)
 
 
@@ -75,7 +76,7 @@ def escape_block_start(md: str) -> str:
         return md
     tok = m.group(1)
     if tok[0].isdigit():
-        idx = re.match(r"\d+", md).end()
+        idx = len(tok) - len(tok.lstrip("0123456789"))
         return md[:idx] + "\\" + md[idx:]
     return "\\" + md
 
@@ -152,68 +153,72 @@ def render_inline(segs: list[Seg]) -> str:
     return "".join(out)
 
 
-def _tokenize(s: str):
-    toks: list[tuple] = []
+# A token is ("t", text), ("br",), ("link", label, url), or ("m", kind, marker) for an emphasis marker.
+Token = tuple[str, ...]
+
+# Longer markers first, so that `**` is not read as two `*` markers.
+_MARKERS = (("**", "b"), ("~~", "s"), ("*", "i"))
+
+
+def _marker_at(s: str, i: int) -> tuple[str, str] | None:
+    """The emphasis kind and marker that start at `i`. `_` inside a word is text, not a marker."""
+    for mark, kind in _MARKERS:
+        if s.startswith(mark, i):
+            return kind, mark
+    if s[i] == "_":
+        prev = s[i - 1] if i else ""
+        nxt = s[i + 1] if i + 1 < len(s) else ""
+        if not (prev.isalnum() and nxt.isalnum()):
+            return "u", "_"
+    return None
+
+
+def _special_at(s: str, i: int) -> tuple[Token, int] | None:
+    """The line break, link, or marker token that starts at `i`, and the index after it."""
+    m = BR_RE.match(s, i)
+    if m:
+        return ("br",), m.end()
+    if s[i] == "\n":
+        return ("br",), i + 1
+    if s[i] == "[":
+        m = LINK_RE.match(s, i)
+        if m:
+            return ("link", m.group(1), _decode_url(m.group(2))), m.end()
+    marker = _marker_at(s, i)
+    if marker:
+        kind, mark = marker
+        return ("m", kind, mark), i + len(mark)
+    return None
+
+
+def _scan(s: str) -> list[Token]:
+    toks: list[Token] = []
     buf: list[str] = []
-
-    def flush():
-        if buf:
-            toks.append(("t", "".join(buf)))
-            buf.clear()
-
     i = 0
     n = len(s)
     while i < n:
-        c = s[i]
-        if c == "\\" and i + 1 < n and s[i + 1] in PUNCT:
+        if s[i] == "\\" and i + 1 < n and s[i + 1] in PUNCT:
             buf.append(s[i + 1])
             i += 2
             continue
-        m = BR_RE.match(s, i)
-        if m:
-            flush()
-            toks.append(("br",))
-            i = m.end()
-            continue
-        if c == "\n":
-            flush()
-            toks.append(("br",))
+        found = _special_at(s, i)
+        if found is None:
+            buf.append(s[i])
             i += 1
             continue
-        if c == "[":
-            m = LINK_RE.match(s, i)
-            if m:
-                flush()
-                toks.append(("link", m.group(1), _decode_url(m.group(2))))
-                i = m.end()
-                continue
-        if s.startswith("**", i):
-            flush()
-            toks.append(["m", "b", "**"])
-            i += 2
-            continue
-        if s.startswith("~~", i):
-            flush()
-            toks.append(["m", "s", "~~"])
-            i += 2
-            continue
-        if c == "*":
-            flush()
-            toks.append(["m", "i", "*"])
-            i += 1
-            continue
-        if c == "_":
-            prev = s[i - 1] if i else ""
-            nxt = s[i + 1] if i + 1 < n else ""
-            if not (prev.isalnum() and nxt.isalnum()):
-                flush()
-                toks.append(["m", "u", "_"])
-                i += 1
-                continue
-        buf.append(c)
-        i += 1
-    flush()
-    # Pair markers; unpaired ones become literal text.
+        if buf:
+            toks.append(("t", "".join(buf)))
+            buf.clear()
+        tok, i = found
+        toks.append(tok)
+    if buf:
+        toks.append(("t", "".join(buf)))
+    return toks
+
+
+def _tokenize(s: str) -> list[Token]:
+    """Tokens for `s`, with unpaired emphasis markers turned back into text."""
+    toks = _scan(s)
     open_: dict[str, int] = {}
     paired: set[int] = set()
     for idx, t in enumerate(toks):
@@ -228,7 +233,7 @@ def _tokenize(s: str):
     return [t if t[0] != "m" or idx in paired else ("t", t[2]) for idx, t in enumerate(toks)]
 
 
-def parse_inline(s: str, link: str | None = None, base=(False, False, False)) -> list[Seg]:
+def parse_inline(s: str, link: str | None = None, base: tuple[bool, bool, bool] = (False, False, False)) -> list[Seg]:
     b, i, st = base
     u = False
     out: list[Seg] = []
