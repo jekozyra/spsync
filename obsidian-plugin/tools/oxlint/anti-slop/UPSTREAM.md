@@ -6,7 +6,9 @@ Revision: `13909c9e07590f5a85d93c62712259fe14a883f7` (2026-10-13, "Merge pull re
 
 The files came from `skills/install-anti-slop/assets/anti-slop/` at that revision, copied with `skills/install-anti-slop/scripts/install.mjs`. The repository owns future changes.
 
-The plugin paths are `obsidian-plugin/tools/oxlint/anti-slop/index.ts`, `rules/`, `shared/`, `effect/`, and `vendor/`.
+License: MIT. `LICENSE` is the upstream license file from the repository root at that revision. `vendor/eslint-stylistic/LICENSE` is the MIT license of the vendored ESLint Stylistic code.
+
+The plugin paths are `obsidian-plugin/tools/oxlint/anti-slop/index.ts`, `LICENSE`, `rules/`, `shared/`, `effect/`, and `vendor/`.
 
 ## Local deviations
 
