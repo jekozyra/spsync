@@ -212,7 +212,8 @@ def cmd_watch(args):
                 local, _ = s.local_changed(b, note)
                 if local and now - note.stat().st_mtime < args.idle:
                     continue
-                if local or now - last_remote.get(b.ref, 0) >= args.interval:
+                remote_due = now - last_remote.get(b.ref, 0) >= args.interval and b.drive_id != "word"
+                if local or remote_due:
                     last_remote[b.ref] = now
                     res = s.sync(note, suggest=args.suggest)
                     if res.status != "unchanged":

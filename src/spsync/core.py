@@ -27,6 +27,10 @@ class SyncError(Exception):
     pass
 
 
+class RemoteChangedError(SyncError):
+    pass
+
+
 @dataclass
 class Result:
     status: str  # unchanged | pulled | pushed | merged | conflict | dry-run
@@ -149,6 +153,8 @@ class Session:
         changed, pitems = self.local_changed(b, note)
         if not changed:
             return Result("unchanged", "No local edits.")
+        if b.drive_id == "word":
+            return self._push_word(note, b, base, pitems, suggest=suggest, dry_run=dry_run)
         author, initials = self.me() if not dry_run else ("spsync", "")
         try:
             out, report = apply_note(base, b.items, pitems, author=author, initials=initials, suggest=suggest)
@@ -163,7 +169,7 @@ class Session:
             self.graph.upload(b.drive_id, b.item_id, out, b.etag)
         except GraphError as exc:
             if exc.status == 412:
-                raise SyncError("The document changed in SharePoint since your last pull. Run `spsync sync` to merge.") from exc
+                raise RemoteChangedError("The document changed in SharePoint since your last pull. Run `spsync sync` to merge.") from exc
             if exc.status == 423:
                 raise SyncError(f"The document is locked ({exc.message}). Try again shortly.") from exc
             raise
@@ -171,9 +177,33 @@ class Session:
         self._bind(item, data, note)
         return Result("pushed", msg)
 
+    def _push_word(self, note, b, base, pitems, *, suggest, dry_run) -> Result:
+        if any(p.t == "conflict" for p in pitems):
+            raise SyncError("The note still has [!conflict] callouts. Resolve them and delete the callouts first.")
+        try:
+            report, data = self.graph.word.apply(b.item_id, base, b.items, pitems, suggest=suggest, dry_run=dry_run)
+        except GraphError as exc:
+            if exc.status == 412:
+                raise RemoteChangedError("The document changed since your last pull. Run `spsync sync` to merge.") from exc
+            raise
+        msg = report.summary() + "".join(f"\n  warning: {w}" for w in report.warnings)
+        if dry_run:
+            return Result("dry-run", msg)
+        if data is None:
+            return Result("unchanged", "Nothing to send." + "".join(f"\n  warning: {w}" for w in report.warnings))
+        item = self.graph.item(b.drive_id, b.item_id)
+        self._bind(item, data, note)
+        return Result("pushed", msg)
+
     def sync(self, note: Path, *, suggest: bool = False) -> Result:
         b, _ = self.binding_for(note)
         local, pitems = self.local_changed(b, note)
+        if b.drive_id == "word" and local:
+            # Word mode checks freshness while applying, which saves opening the document twice.
+            try:
+                return self.push(note, suggest=suggest)
+            except RemoteChangedError:
+                pass
         item = self.graph.item(b.drive_id, b.item_id)
         remote_items = None
         data = None
@@ -254,7 +284,18 @@ def merge_items(base: list[str], local: list[str], remote: list[str]) -> tuple[s
     for group in Merge3(base, local, remote).merge_groups():
         kind = group[0]
         if kind == "conflict":
-            _, _b, a, r = group
+            _, b, a, r = group
+            if len(b) == len(a) == len(r):
+                # Same shape on all sides: settle it paragraph by paragraph.
+                for bx, ax, rx in zip(b, a, r, strict=True):
+                    if ax == rx or rx == bx:
+                        merged.append(ax)
+                    elif ax == bx:
+                        merged.append(rx)
+                    else:
+                        merged.extend([ax, conflict_callout([rx])])
+                        conflicts += 1
+                continue
             merged.extend(a)
             merged.append(conflict_callout(r))
             conflicts += 1

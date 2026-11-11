@@ -184,6 +184,15 @@ class Router:
         self.mode = mode
         self.local = LocalBackend()
         self._graph: Graph | None = None
+        self._word = None
+
+    @property
+    def word(self):
+        if self._word is None:
+            from .word import WordBackend
+
+            self._word = WordBackend()
+        return self._word
 
     @property
     def graph(self) -> Graph:
@@ -192,9 +201,17 @@ class Router:
         return self._graph
 
     def _pick(self, drive_id: str):
+        if drive_id == "word":
+            return self.word
         return self.local if drive_id == LOCAL else self.graph
 
     def resolve(self, ref):
+        if ref.startswith("word:"):
+            return self.word.resolve(ref[5:])
+        if ref.endswith(".url") and Path(ref).expanduser().exists():
+            for line in Path(ref).expanduser().read_text(errors="replace").splitlines():
+                if line.startswith("URL="):
+                    return self.word.resolve(line[4:].strip())
         is_url = ref.startswith("http")
         if not is_url and (ref.startswith((LOCAL + ":", "file://", "/", "~", ".")) or Path(ref).expanduser().exists() or self.mode == LOCAL):
             return self.local.resolve(ref)
@@ -207,20 +224,8 @@ class Router:
                 if len(matches) > 1:
                     where = "; ".join(self.local._where(Path(m["id"])) for m in matches)
                     raise GraphError(409, "ambiguous", f"Several synced copies of {name} ({where}). Pull one by path.")
-                if any(r.joinpath(name + ".url").exists() for r in self.local.roots):
-                    raise GraphError(
-                        404,
-                        "fileShortcut",
-                        f"{name} is a single-file shortcut, which OneDrive syncs to the Mac as a web link (.url), not "
-                        "the document. Ask the owner to put it in a folder shared with you, then add a shortcut to "
-                        "that folder.",
-                    )
-                raise GraphError(
-                    404,
-                    "notSynced",
-                    f"{name} isn't synced to this Mac yet. In OneDrive on the web, open Shared, find it (or the folder "
-                    "it's in), and choose Add shortcut to My files. Then paste the link again.",
-                )
+            # Not synced locally: let Word open it.
+            return self.word.resolve(ref)
             raise GraphError(
                 400,
                 "localMode",
@@ -247,11 +252,25 @@ class Router:
     def me(self):
         return self.local.me() if self.mode == LOCAL else self.graph.me()
 
+    def _with_word(self, hits, word_hits):
+        names = {h["name"].lower() for h in hits}
+        return hits + [h for h in word_hits if h["name"].lower() not in names]
+
+    def _word_hits(self, fn):
+        try:
+            return fn()
+        except Exception:  # noqa: BLE001 - Word missing or not scriptable
+            return []
+
     def search(self, query, size=25):
-        return self.local.search(query, size) if self.mode == LOCAL else self.graph.search(query, size)
+        if self.mode != LOCAL:
+            return self.graph.search(query, size)
+        return self._with_word(self.local.search(query, size), self._word_hits(lambda: self.word.search(query, size)))[:size]
 
     def recent(self):
-        return self.local.recent() if self.mode == LOCAL else self.graph.recent()
+        if self.mode != LOCAL:
+            return self.graph.recent()
+        return self._with_word(self._word_hits(self.word.recent), self.local.recent())
 
 
 def backend() -> Router:

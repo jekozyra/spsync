@@ -33,8 +33,20 @@ def env(tmp_path):
     write_docx(doc, ["One.", "Two.", "Three."])
     router = Router("local")
     router.local = LocalBackend(roots=[od], author="Jillian Kozyra")
+    router._word = FakeWord()
     s = Session(vault, graph=router)
     return s, doc, od
+
+
+class FakeWord:
+    def resolve(self, ref):
+        raise RuntimeError(f"word:{ref}")
+
+    def search(self, q, size=25):
+        return []
+
+    def recent(self):
+        return []
 
 
 def bump(path):
@@ -97,9 +109,9 @@ def test_new_doc_in_synced_folder(env):
     assert "spsync: local:" in note.read_text()
 
 
-def test_sharepoint_url_in_local_mode_explains(env):
+def test_unsynced_link_goes_to_word(env):
     s = env[0]
-    with pytest.raises(Exception, match="Add shortcut"):
+    with pytest.raises(Exception, match="word:https://granicus.sharepoint.com/x.docx"):
         s.pull("https://granicus.sharepoint.com/x.docx")
 
 

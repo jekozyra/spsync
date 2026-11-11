@@ -29,6 +29,7 @@ Tables, images, fields, content controls, footnotes, and paragraphs with pending
 ## Backends
 
 - **local** (default): works on `.docx` files the OneDrive app syncs to `~/Library/CloudStorage/OneDrive-*`. No Graph consent needed. To reach a SharePoint library, open it in the browser and click **Sync** or **Add shortcut to My files**. `search` and `recent` scan those folders by file name. Pushes are refused while the file is open in Word on this Mac, or if it changed since the pull (then `sync` merges).
+- **word** (automatic for links that aren't synced locally): the signed-in Word app opens the document. Pull saves a read-only copy. Push opens it for editing and replays each change through Word's scripting interface, so co-authoring and tracked changes behave as in Word. Word can't script reply threading or resolving, so replies are added as "Re <name>:" comments and resolving is left to Word. Word-backed notes don't auto-pull on a timer, since each check opens Word.
 - **graph**: talks to Microsoft Graph directly (`spsync login`, then `spsync mode graph`). Needs tenant consent.
 
 `spsync mode` shows the current backend, author name, and search roots. `spsync mode local --author "Name" --root <folder>` changes them.
