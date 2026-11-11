@@ -13,6 +13,9 @@ pre-commit:
     anti-slop-python:
       glob: "*.py"
       run: uv run anti-slop-python {staged_files}
+    versions:
+      glob: "{pyproject.toml,obsidian-plugin/manifest.json,obsidian-plugin/package.json}"
+      run: uv run python scripts/check_versions.py
     pytest:
       glob: "*.{py,docx}"
       run: uv run pytest -q
