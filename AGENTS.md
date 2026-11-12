@@ -33,6 +33,7 @@ pnpm -C obsidian-plugin run build
 - `obsidian-plugin/`: the Obsidian plugin, which runs the command-line tool
 - `obsidian-plugin/tools/oxlint/anti-slop/`: vendored Oxlint rules
 - `scripts/`: Word fixture generation and AppleScript checks against Word for Mac
+- `scripts/guide_images/`: the renderer for the animations in `docs/guide.md`
 - `tests/`: the pytest suite and `.docx` fixtures
 
 ## Workflow

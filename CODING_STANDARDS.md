@@ -25,6 +25,7 @@ src/spsync/                         Command-line tool, sync core, docx transform
 obsidian-plugin/                    Obsidian plugin that runs the command-line tool
 obsidian-plugin/tools/oxlint/       Vendored Oxlint rules
 scripts/                            Word fixture generation and checks against Word for Mac
+scripts/guide_images/               Renderer for the animations in docs/guide.md
 tests/                              pytest suite and .docx fixtures
 ```
 
