@@ -2,5 +2,11 @@
   "base": {
     "name": "main",
     "hash": "a63f717e401deda5b12c42ba4405010d2d5812df"
-  }
+  },
+  "pr": {
+    "number": 34,
+    "url": "https://github.com/jekozyra/spsync/pull/34"
+  },
+  "pr_title": "chore(tooling): prepare v0.1.1 release",
+  "pr_description": "## Goal\n\nPrepare the v0.1.1 release metadata and notes so the CLI and plugin publish under the same version.\n\n## Summary\n\nSet the CLI and plugin versions to 0.1.1 and refresh uv.lock. Move the standalone CLI download feature into the v0.1.1 changelog. Record the GPL-2.0-or-later distribution and license text in the release notes. Update the changelog comparison links.\n\n## Testing\n\n- uv lock --check\n- uv run ruff format --check\n- uv run ruff check\n- uv run ty check\n- uv run anti-slop-python src tests\n- uv run pytest\n- pnpm -C obsidian-plugin run format:check\n- pnpm -C obsidian-plugin run lint\n- pnpm -C obsidian-plugin run test\n- pnpm -C obsidian-plugin run build\n- uv build\n- The pre-commit hook passed, including version consistency, plugin formatting, diagrams, and plugin build.\n\n## Issue\n\nRefs #16\n"
 }
