@@ -9,6 +9,7 @@
     "jillian/10-doctor-cli": "29827d7c2d5c19f691c1a3e7485e78e5f16953d3",
     "jillian/12-readme-quickstart": "3e9392a109ab9b837d5edc8e139fb6a7d75f3d5b",
     "jillian/13-guide-image-renderer": "be60e553b56d67e366e2e96ba7841d6aeb942f50",
-    "jillian/15-standalone-build-prototype": "4744e78e4e49afd8f1122d8379e3a20c54926ce3"
+    "jillian/15-standalone-build-prototype": "4744e78e4e49afd8f1122d8379e3a20c54926ce3",
+    "jillian/22-relicense-gpl": "1db4e8ec7abb44b356ecdfe3fdff74bcb7aa2e6c"
   }
 }
