@@ -2,5 +2,11 @@
   "base": {
     "name": "main",
     "hash": "32df1dd40fed3287514f7991a6ca1d8c38aa410c"
-  }
+  },
+  "pr": {
+    "number": 27,
+    "url": "https://github.com/jekozyra/spsync/pull/27"
+  },
+  "pr_title": "fix(tooling): pin setup-uv to a release that exists",
+  "pr_description": "## Goal\n\nThe release workflow starts on a pushed tag. The first test tag failed in job setup.\n\n## Summary\n\nThe workflow named `astral-sh/setup-uv@v10`. The setup-uv repository publishes no major-version tag, so GitHub Actions could not resolve the action, and the job failed before its first step. The workflow now names the full release `v10.3.3`. The other actions (`actions/checkout@v7`, `pnpm/action-setup@v6`, and `actions/setup-node@v7`) have major-version tags. The change does not touch docx reading or patching.\n\n## Testing\n\n- The `v0.0.1` test tag failed with \"Unable to resolve action `astral-sh/setup-uv@v10`, unable to find version `v10`\". No release was created, and the tag is deleted.\n- `gh api` confirms that `v7`, `v6`, and `v7` exist as tags on the other three action repositories, and that `v10` does not exist on setup-uv.\n- `actionlint` 1.7.12 reports no findings.\n- The next `v0.0.1` test tag checks the complete workflow.\n\n## Issue\n\nRefs #11\n"
 }
