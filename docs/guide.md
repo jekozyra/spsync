@@ -2,7 +2,7 @@
 
 This guide shows how to edit and comment on a SharePoint Word document as an Obsidian note. Each step has a short animation. The animations show a sample document and sample names.
 
-You need a Mac with Apple silicon, Obsidian, and the OneDrive app or Word for Mac. You do not need Terminal.
+You need a Mac with Apple silicon, Obsidian, Microsoft Word for Mac, and the OneDrive app. Sign in to Word and OneDrive with your work account. You do not need Terminal.
 
 1. [Install the plugin](#1-install-the-plugin)
 2. [Sync a SharePoint library with OneDrive](#2-sync-a-sharepoint-library-with-onedrive)
