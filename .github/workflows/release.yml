@@ -4,6 +4,9 @@
 #   spsync-macos-arm64.tar.gz         the standalone CLI from scripts/build_standalone.sh
 #   spsync-macos-arm64.tar.gz.sha256  its SHA-256 checksum in shasum format; the plugin checks it
 #   main.js, manifest.json            the Obsidian plugin; BRAT reads these two files by name
+#   spsync-X.Y.Z-source.tar.gz        the complete corresponding source code of the CLI build; the
+#                                     CLI bundles merge3 (GPL-2.0-or-later), and GPLv2 section 3(a)
+#                                     needs the source next to the binary
 name: Release
 
 on:
@@ -55,6 +58,9 @@ jobs:
         working-directory: dist
         run: shasum -a 256 "$ARCHIVE" > "$ARCHIVE.sha256"
 
+      - name: Write the source archive
+        run: uv run --no-project python scripts/source_archive.py build/arm64/requirements.txt
+
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -65,5 +71,6 @@ jobs:
           --notes-file "$RUNNER_TEMP/notes.md"
           "dist/$ARCHIVE"
           "dist/$ARCHIVE.sha256"
+          "dist/spsync-${GITHUB_REF_NAME#v}-source.tar.gz"
           obsidian-plugin/main.js
           obsidian-plugin/manifest.json

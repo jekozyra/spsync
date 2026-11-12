@@ -16,7 +16,7 @@ def bundle(dest: Path, requirements: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_gpl_package_gets_its_license_and_a_written_offer(tmp_path: Path) -> None:
+def test_gpl_package_gets_its_license_and_the_source_archive(tmp_path: Path) -> None:
     merge3 = metadata.version("merge3")
     httpx = metadata.version("httpx")
     result = bundle(tmp_path, f"httpx=={httpx}\nmerge3=={merge3}\nabsent-package==1.0 ; sys_platform == 'win32'\n")
@@ -25,13 +25,14 @@ def test_gpl_package_gets_its_license_and_a_written_offer(tmp_path: Path) -> Non
     assert (tmp_path / "licenses" / f"httpx-{httpx}" / "LICENSE.md").is_file()
     notices = (tmp_path / "THIRD_PARTY_NOTICES.md").read_text()
     assert f"| merge3 | {merge3} | GPL-2.0-or-later |" in notices
-    assert "## Written offer for source code" in notices
+    assert "## Source code" in notices
+    assert f"`spsync-{metadata.version('spsync')}-source.tar.gz`" in notices
     assert f"https://github.com/jekozyra/spsync/tree/v{metadata.version('spsync')}" in notices
     assert "absent-package" not in notices
     assert "| Python |" in notices
 
 
-def test_permissive_packages_get_no_written_offer(tmp_path: Path) -> None:
+def test_permissive_packages_get_no_source_section(tmp_path: Path) -> None:
     result = bundle(tmp_path, f"httpx=={metadata.version('httpx')}\n")
     assert result.returncode == 0, result.stderr
-    assert "Written offer" not in (tmp_path / "THIRD_PARTY_NOTICES.md").read_text()
+    assert "## Source code" not in (tmp_path / "THIRD_PARTY_NOTICES.md").read_text()

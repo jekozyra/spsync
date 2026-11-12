@@ -5,9 +5,10 @@
 #
 #   dist/spsync-macos-arm64/spsync                  the executable; it loads the other files in its folder
 #   dist/spsync-macos-arm64/LICENSE                 the spsync license
-#   dist/spsync-macos-arm64/THIRD_PARTY_NOTICES.md  the bundled packages, their licenses, and the source offer
+#   dist/spsync-macos-arm64/THIRD_PARTY_NOTICES.md  the bundled packages, their licenses, and the source archive
 #   dist/spsync-macos-arm64/licenses/               the license file of each bundled package
 #   dist/spsync-macos-arm64.tar.gz                  the folder, packed for download
+#   build/arm64/requirements.txt                    the bundled packages; source_archive.py reads it
 #
 # The script stops when the version of the built executable differs from the three manifests.
 #
