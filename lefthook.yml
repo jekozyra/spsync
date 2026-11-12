@@ -31,6 +31,9 @@ pre-commit:
       root: obsidian-plugin/
       glob: "*.ts"
       run: pnpm run test
+    diagrams:
+      glob: "{docs/images/*.{mmd,svg},obsidian-plugin/diagrams.ts,obsidian-plugin/package.json}"
+      run: pnpm -C obsidian-plugin run diagrams:check
     plugin-build:
       root: obsidian-plugin/
       glob: "*.{ts,json}"

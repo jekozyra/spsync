@@ -1,0 +1,13 @@
+flowchart LR
+  SP[("SharePoint / OneDrive")]
+  SP <-->|"OneDrive app sync"| L["Local .docx<br/>~/Library/CloudStorage"]
+  SP <-->|"Word for Mac"| W["Word app"]
+  L -->|"pull"| CLI["spsync CLI"]
+  W -->|"pull: read-only copy"| CLI
+  CLI -->|"writes"| N["Obsidian note .md"]
+  CLI -->|"keeps"| S[".spsync/<br/>original .docx + block map"]
+  N -->|"edits"| CLI
+  CLI -->|"push: patch changed paragraphs"| L
+  CLI -->|"push: replay edits"| W
+  P["Obsidian plugin"] -->|"downloads and runs"| CLI
+  GH["GitHub release"] -->|"standalone CLI"| P

@@ -15,6 +15,7 @@
     "standalone-cli.ts",
     "standalone-cli.test.ts",
     "esbuild.ts",
+    "diagrams.ts",
     "oxlint.config.ts"
   ]
 }

@@ -29,6 +29,9 @@ importers:
       oxlint:
         specifier: 1.93.0
         version: 1.93.0
+      pele:
+        specifier: ^1.13.0
+        version: 1.13.0
       typescript:
         specifier: ^5.8.0
         version: 5.9.3
@@ -510,6 +513,10 @@ packages:
       vite-plus:
         optional: true
 
+  pele@1.13.0:
+    resolution: {integrity: sha512-Ie8UKY9x00MsuR3jO6AzUwzK2Z6MIV3Tf4EDdITiuk8Uaz8K7g0R082WqsqNaSU8DdgkrRvZThzhit83mi/uiw==}
+    engines: {node: '>=20'}
+
   style-mod@4.1.4:
     resolution: {integrity: sha512-XXWIQt633/EpAFx8aZDOTjBzrCaGmhvEQlQo6MVPfa2OzO2cWo+4hV9h+6UkHYlXGfy+ODXKUdP7Pthmcu5ATw==}
 
@@ -838,6 +845,8 @@ snapshots:
       '@oxlint/binding-win32-arm64-msvc': 1.93.0
       '@oxlint/binding-win32-ia32-msvc': 1.93.0
       '@oxlint/binding-win32-x64-msvc': 1.93.0
+
+  pele@1.13.0: {}
 
   style-mod@4.1.4: {}
 
