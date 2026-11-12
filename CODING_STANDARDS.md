@@ -142,7 +142,6 @@ config.py <-- cli.py, auth.py, local.py, doctor.py
 ## Configuration
 
 - Read `SPSYNC_*` environment variables and `~/.config/spsync/` only in `config.py`. Other modules call its functions.
-- List every environment variable in the README configuration table.
 - Give each setting a documented default when the tool can work without it. Fail with a message that names the setting when it cannot.
 - Store tokens in the macOS Keychain through msal-extensions. Use the private file cache only when the Keychain is unavailable, and warn the user when that happens. Do not write credentials or tokens to the vault, `.spsync/`, or a configuration file.
 
