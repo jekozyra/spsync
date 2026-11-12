@@ -2,5 +2,11 @@
   "base": {
     "name": "main",
     "hash": "9229f531d3b51f5d0e9f8d8b3d7bac4b05f055eb"
-  }
+  },
+  "pr": {
+    "number": 35,
+    "url": "https://github.com/jekozyra/spsync/pull/35"
+  },
+  "pr_title": "docs(docs): align OneDrive animation with library layout",
+  "pr_description": "## Goal\n\nAlign the setup guide animation with the current SharePoint library layout so teammates can find the shortcut action.\n\n## Summary\n\nMove \"Add shortcut to My files\" into the library's upper-right header. Add the view tabs and a folder row shown in the reference layout. Regenerate the guide GIF and PNG, and clarify the image alt text. The animation uses synthetic sample names.\n\n## Testing\n\n- pnpm -C obsidian-plugin exec tsc -p ../scripts/guide_images\n- uv run --group guide python scripts/guide_images/render.py 02-onedrive\n- git diff --check\n- Visually reviewed preview frames before Finder opens.\n- Oxfmt's default check reports existing formatting differences in the shared renderer files. I kept those unrelated reflows out of this change.\n\n## Issue\n\nRefs #14\n"
 }
