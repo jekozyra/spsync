@@ -14,7 +14,7 @@ from urllib.parse import unquote
 from . import config
 from .auth import Auth, AuthError
 from .core import Session, SyncError
-from .doctor import SetupEnvironment, complete, run_checks
+from .doctor import SetupEnvironment, cli_version, complete, run_checks
 from .graph import Graph, GraphError
 from .local import LOCAL, WORD, backend
 from .mdparse import split_frontmatter
@@ -336,6 +336,7 @@ def _add_note_commands(sub: argparse._SubParsersAction) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="spsync", description="Edit SharePoint Word documents as Obsidian notes.")
+    p.add_argument("--version", action="version", version=f"%(prog)s {cli_version()}")
     sub = p.add_subparsers(dest="cmd", required=True)
     _add_account_commands(sub)
     _add_discovery_commands(sub)
