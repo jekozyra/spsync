@@ -23,6 +23,7 @@ uv run pytest
 pnpm -C obsidian-plugin install --frozen-lockfile
 pnpm -C obsidian-plugin run format
 pnpm -C obsidian-plugin run lint
+pnpm -C obsidian-plugin run test
 pnpm -C obsidian-plugin run build
 ```
 
