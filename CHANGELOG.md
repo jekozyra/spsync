@@ -4,6 +4,8 @@ This file records the notable changes in each spsync release. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-11
+
 ### Added
 
 - `spsync pull`, `push`, and `sync` edit a SharePoint Word document as an Obsidian note. The merge keeps unchanged paragraphs and their formatting, and shows overlapping edits as conflict callouts.
@@ -14,4 +16,7 @@ This file records the notable changes in each spsync release. The format follows
 - `spsync doctor` checks the first-run setup: the OneDrive folder, Word for Mac, the Automation permission, and the author name.
 - `spsync --version` prints the CLI version.
 - The Obsidian plugin runs the CLI from the command palette, syncs notes automatically, and has a Check setup command and an author setting.
-- A standalone build of the CLI for Apple silicon Macs. The build needs no Python or uv, and includes the license notices of its bundled packages.
+- A standalone build of the CLI for Apple silicon Macs. The build needs no Python or uv, and includes the license notices of its bundled packages. Each release also publishes the source archive of the build.
+
+[Unreleased]: https://github.com/jekozyra/spsync/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/jekozyra/spsync/releases/tag/v0.1.0
