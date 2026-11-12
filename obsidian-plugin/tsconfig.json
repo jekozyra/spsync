@@ -4,10 +4,17 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
+    "allowImportingTsExtensions": true,
     "noImplicitAny": true,
     "skipLibCheck": true,
     "lib": ["ES2020", "DOM"],
     "types": ["node"]
   },
-  "include": ["main.ts", "esbuild.ts", "oxlint.config.ts"]
+  "include": [
+    "main.ts",
+    "standalone-cli.ts",
+    "standalone-cli.test.ts",
+    "esbuild.ts",
+    "oxlint.config.ts"
+  ]
 }

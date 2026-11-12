@@ -10,10 +10,13 @@ import {
   Notice,
   Plugin,
   PluginSettingTab,
+  requestUrl,
   Setting,
   SuggestModal,
   TFile,
 } from "obsidian";
+
+import { SHARED_INSTALL_ROOT, standaloneCli } from "./standalone-cli.ts";
 
 interface Settings {
   cliPath: string;
@@ -25,7 +28,8 @@ interface Settings {
 }
 
 const DEFAULTS: Settings = {
-  cliPath: "~/.local/bin/spsync",
+  // An empty path runs the standalone build that the plugin downloads.
+  cliPath: "",
   autoSync: true,
   pullIntervalMinutes: 5,
   pushIdleSeconds: 30,
@@ -102,6 +106,8 @@ export default class SpsyncPlugin extends Plugin {
   status!: HTMLElement;
   timers = new Map<string, number>();
   running = new Set<string>();
+  // The install that is in progress. Commands that start during the install wait for the same install.
+  cliInstall: Promise<string> | null = null;
 
   async onload() {
     this.settings = Object.assign({}, DEFAULTS, await this.loadData());
@@ -168,6 +174,13 @@ export default class SpsyncPlugin extends Plugin {
 
     this.addSettingTab(new SpsyncSettings(this.app, this));
 
+    // Install the CLI for a new plugin version at startup, so the first command does not wait for the download.
+    this.app.workspace.onLayoutReady(() => {
+      this.cli().catch((e) =>
+        notify(`Could not install the spsync CLI: ${errorText(e)}`, ERROR_NOTICE_MS),
+      );
+    });
+
     this.registerEvent(
       this.app.vault.on("modify", (file) => {
         if (!this.settings.autoSync || !(file instanceof TFile) || !this.isLinked(file)) {
@@ -222,17 +235,54 @@ export default class SpsyncPlugin extends Plugin {
     throw new Error("SharePoint Sync needs the desktop app.");
   }
 
-  cli(): string {
+  async installStandaloneCli(): Promise<string> {
+    const progress: Notice[] = [];
+
+    try {
+      return await standaloneCli({
+        version: this.manifest.version,
+        platform: process.platform,
+        arch: process.arch,
+        root: SHARED_INSTALL_ROOT,
+        fetchBytes: async (url) => (await requestUrl({ url })).arrayBuffer,
+        onDownloadStart: () => {
+          progress.push(
+            notify(`Downloading the spsync CLI ${this.manifest.version}...`, STICKY_NOTICE),
+          );
+        },
+      });
+    } finally {
+      for (const notice of progress) {
+        notice.hide();
+      }
+    }
+  }
+
+  /** The CLI to run: the `cliPath` setting, or the standalone build for this plugin version when it is empty. */
+  async cli(): Promise<string> {
     const p = this.settings.cliPath.trim();
 
-    return p.startsWith("~") ? path.join(os.homedir(), p.slice(1)) : p;
+    if (p) {
+      return p.startsWith("~") ? path.join(os.homedir(), p.slice(1)) : p;
+    }
+
+    this.cliInstall ??= this.installStandaloneCli().finally(() => {
+      this.cliInstall = null;
+    });
+
+    return this.cliInstall;
   }
 
   /** Run the CLI. An exit code in `acceptedExitCodes` still describes a result, so it resolves with stdout. */
-  run(args: string[], acceptedExitCodes: readonly number[] = [EXIT_CONFLICT]): Promise<string> {
+  async run(
+    args: string[],
+    acceptedExitCodes: readonly number[] = [EXIT_CONFLICT],
+  ): Promise<string> {
+    const cli = await this.cli();
+
     return new Promise((resolve, reject) => {
       execFile(
-        this.cli(),
+        cli,
         args,
         {
           cwd: this.vaultPath(),
@@ -242,7 +292,9 @@ export default class SpsyncPlugin extends Plugin {
         },
         (err, stdout, stderr) => {
           if (err && err.code === "ENOENT") {
-            reject(new Error(`spsync CLI not found at ${this.cli()}. Set its path in settings.`));
+            reject(
+              new Error(`spsync CLI not found at ${cli}. Check the spsync CLI path in settings.`),
+            );
           } else if (err && !acceptedExitCodes.some((code) => code === err.code)) {
             reject(new Error((stderr || stdout || err.message).trim()));
           } else {
@@ -642,7 +694,9 @@ class SpsyncSettings extends PluginSettingTab {
     const add = () => new Setting(containerEl);
     add()
       .setName("spsync CLI path")
-      .setDesc("Run `spsync login` once in a terminal before using the plugin.")
+      .setDesc(
+        "Leave empty to run the spsync CLI that the plugin downloads for its version. Enter a path to run another build, such as ~/.local/bin/spsync.",
+      )
       .addText((t) =>
         t.setValue(s.cliPath).onChange(async (v) => {
           s.cliPath = v;
@@ -659,7 +713,7 @@ class SpsyncSettings extends PluginSettingTab {
         this.plugin
           .modeReport()
           .then((mode) => t.setValue(mode.author))
-          .catch(() => t.setPlaceholder("Set the spsync CLI path first"));
+          .catch(() => t.setPlaceholder("Could not run the spsync CLI"));
         // "change" fires when the field loses focus, so each keystroke does not run the CLI.
         t.inputEl.addEventListener("change", async () => {
           const author = t.getValue().trim();
