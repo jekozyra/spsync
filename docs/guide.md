@@ -50,7 +50,11 @@ If the OneDrive app is not signed in, sign in with your work account first.
 2. Type words from the document name, and press <kbd>Return</kbd>.
 3. Pick the document. spsync makes a note for the document in the `SharePoint` folder of your vault, and opens the note.
 
-To open a document from a link, run **Open a SharePoint link**. To see the documents that you opened recently, run **Open a recent SharePoint document**.
+For a library that you cannot sync to OneDrive, run **Open a SharePoint link** and paste the
+document's SharePoint URL. spsync uses the signed-in Word for Mac app to read and save the
+document. You do not need to sync the whole library.
+
+To reopen a document, run **Open a recent SharePoint document**.
 
 <picture>
   <source media="(prefers-reduced-motion: reduce)" srcset="images/03-find-and-open.png">
