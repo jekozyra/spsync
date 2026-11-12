@@ -113,6 +113,16 @@ uv run python scripts/word_fixtures.py ~/Documents/spsync-check   # then open in
 osascript scripts/word_check.applescript ~/Documents/spsync-check/1-direct.docx
 ```
 
+## Diagrams
+
+[Pele](https://pele.run/) renders the README diagrams. GitHub renders a `mermaid` code block with Mermaid.js, so the README shows the committed SVG as an image. To change a diagram, edit its Mermaid source in `docs/images/<name>.mmd`, and write the SVG again:
+
+```sh
+pnpm -C obsidian-plugin run diagrams
+```
+
+Commit the `.mmd` and the `.svg` together. The pre-commit hook runs `diagrams:check`, which fails when an SVG differs from its source.
+
 ## Build and release
 
 To build the standalone CLI, which runs without Python or uv, run the build script on a Mac with Apple silicon. The script needs the Xcode Command Line Tools and writes `dist/spsync-macos-<arch>.tar.gz`:

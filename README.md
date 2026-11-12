@@ -11,21 +11,7 @@ spsync reaches a document in one of two ways:
 - **OneDrive sync folder.** spsync reads and writes the files that the OneDrive app syncs to `~/Library/CloudStorage/OneDrive-*`.
 - **Word app.** spsync uses the signed-in Word for Mac app for links that OneDrive does not sync. Co-authoring and tracked changes then work as they do in Word.
 
-```mermaid
-flowchart LR
-  SP[("SharePoint / OneDrive")]
-  SP <-->|"OneDrive app sync"| L["Local .docx<br/>~/Library/CloudStorage"]
-  SP <-->|"Word for Mac"| W["Word app"]
-  L -->|"pull"| CLI["spsync CLI"]
-  W -->|"pull: read-only copy"| CLI
-  CLI -->|"writes"| N["Obsidian note .md"]
-  CLI -->|"keeps"| S[".spsync/<br/>original .docx + block map"]
-  N -->|"edits"| CLI
-  CLI -->|"push: patch changed paragraphs"| L
-  CLI -->|"push: replay edits"| W
-  P["Obsidian plugin"] -->|"downloads and runs"| CLI
-  GH["GitHub release"] -->|"standalone CLI"| P
-```
+![Data flow: SharePoint syncs to the local .docx through the OneDrive app and to the Word app. The spsync CLI pulls from both, writes the Obsidian note, and keeps the original .docx and block map in .spsync/. A push patches the changed paragraphs into the local .docx, or replays the edits in the Word app. The Obsidian plugin downloads the standalone CLI from the GitHub release and runs it.](docs/images/data-flow.svg)
 
 The Obsidian plugin, **SharePoint Sync**, runs the spsync command-line tool (CLI) for you. You do not use Terminal.
 
