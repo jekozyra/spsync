@@ -4,6 +4,10 @@ This file records the notable changes in each spsync release. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The Obsidian plugin downloads the standalone CLI of its own version from the GitHub release, checks its SHA-256 checksum, and runs it. Every vault shares one install. A non-empty CLI path setting skips the download. Teammates install the plugin with BRAT and need no Python, uv, or Node.
+
 ## [0.1.0] - 2026-11-11
 
 ### Added

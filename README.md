@@ -14,6 +14,19 @@ spsync reaches documents through one of three backends:
 
 ## Setup
 
+### Install the plugin only
+
+Teammates need only a Mac with Apple silicon, Obsidian, and either the OneDrive app or Word for Mac. They do not need Terminal, Python, uv, or Node.
+
+1. In Obsidian, install the **BRAT** plugin from Settings > Community plugins, and enable it.
+2. Run the BRAT command **Add a beta plugin for testing**, and enter `jekozyra/spsync`. BRAT installs and enables **SharePoint Sync** from the latest GitHub release, and installs later releases as updates.
+3. Wait for the "Downloading the spsync CLI" notice to close. On the first start after an install or an update, the plugin downloads the standalone CLI of the same version from the GitHub release. The plugin checks the SHA-256 checksum of the download and does not run a build that fails the check. Every vault uses the same build in `~/Library/Application Support/spsync/bin/<version>/`. After an update, the plugin removes the older versions.
+4. Run **Check setup** from the command palette.
+
+The CLI download supports only Macs with Apple silicon. On an Intel Mac, install the CLI from a clone as described below, and set the CLI path in the plugin settings.
+
+### Develop spsync
+
 You need macOS, [uv](https://docs.astral.sh/uv/) with Python 3.13, and either the OneDrive app (local backend) or Word for Mac (word backend). The Obsidian plugin also needs Node 23.6 or later and pnpm.
 
 From a clone of this repo, install the CLI:
@@ -44,7 +57,7 @@ mkdir -p <vault>/.obsidian/plugins/spsync
 cp main.js manifest.json <vault>/.obsidian/plugins/spsync/
 ```
 
-Then enable **SharePoint Sync** under Settings > Community plugins. Run **Check setup** from the command palette to see the `spsync doctor` results in Obsidian.
+Then enable **SharePoint Sync** under Settings > Community plugins. To run the CLI from your clone instead of the downloaded build, set the plugin's **spsync CLI path** setting to `~/.local/bin/spsync`. A non-empty path skips the download. Run **Check setup** from the command palette to see the `spsync doctor` results in Obsidian.
 
 ## Usage
 
@@ -106,12 +119,12 @@ The plugin's settings tab sets the CLI path, the author name, automatic sync, th
 | Path | What lives here |
 |---|---|
 | `src/spsync/` | The CLI: `cli.py` commands, `config.py` settings, `reader/` and `patch/` docx parsing and patching, `local.py`, `word/`, and `graph.py` backends |
-| `obsidian-plugin/` | The Obsidian plugin, which shells out to the CLI |
+| `obsidian-plugin/` | The Obsidian plugin, which shells out to the CLI and downloads the standalone CLI in `standalone-cli.ts` |
 | `scripts/` | The standalone build, the manifest version check, and helpers that generate Word fixtures and check them in Word |
 | `tests/` | pytest suite and `.docx` fixtures |
 | `.github/workflows/` | The release workflow, which publishes a GitHub release for each version tag |
 
-Install the git hooks once. The pre-commit hook runs ruff, ty, anti-slop-python, pytest, and the plugin's Oxfmt, Oxlint, and build checks. When a commit changes `pyproject.toml`, `obsidian-plugin/manifest.json`, or `obsidian-plugin/package.json`, the hook also runs `scripts/check_versions.py`, which fails when the three versions differ. [`CODING_STANDARDS.md`](CODING_STANDARDS.md) lists every check.
+Install the git hooks once. The pre-commit hook runs ruff, ty, anti-slop-python, pytest, and the plugin's Oxfmt, Oxlint, test, and build checks. When a commit changes `pyproject.toml`, `obsidian-plugin/manifest.json`, or `obsidian-plugin/package.json`, the hook also runs `scripts/check_versions.py`, which fails when the three versions differ. [`CODING_STANDARDS.md`](CODING_STANDARDS.md) lists every check.
 
 ```sh
 uv sync --locked
