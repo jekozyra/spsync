@@ -126,6 +126,7 @@ uv run anti-slop-python src tests
 uv run pytest
 pnpm -C obsidian-plugin run format:check
 pnpm -C obsidian-plugin run lint
+pnpm -C obsidian-plugin run test
 pnpm -C obsidian-plugin run build
 ```
 

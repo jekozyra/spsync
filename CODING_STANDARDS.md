@@ -74,6 +74,8 @@ Follow these rules for the Python source:
 ```text
 obsidian-plugin/
   main.ts                 Plugin entry point, commands, and settings tab
+  standalone-cli.ts       Download, checksum check, and shared install of the standalone CLI
+  *.test.ts               node:test tests, run with `pnpm run test`
   esbuild.ts              Bundle script for main.js
   oxlint.config.ts        Oxlint configuration
   tools/oxlint/anti-slop/ Vendored Oxlint rules and their UPSTREAM.md
@@ -263,5 +265,5 @@ Before declaring a code change complete:
 6. Confirm that tests protect distinct interface behavior.
 7. Confirm that defined acceptance criteria are met.
 8. Run `uv run ruff format --check`, `uv run ruff check`, `uv run ty check`, `uv run anti-slop-python src tests`, and `uv run pytest`.
-9. When `obsidian-plugin/` changes, run its `format:check`, `lint`, and `build` scripts.
+9. When `obsidian-plugin/` changes, run its `format:check`, `lint`, `test`, and `build` scripts.
 10. When the change affects how Word reads or saves a document, generate the fixtures with `scripts/word_fixtures.py` and check them in Word for Mac with `scripts/word_check.applescript`.
