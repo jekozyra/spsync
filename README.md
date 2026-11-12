@@ -109,6 +109,7 @@ The plugin's settings tab sets the CLI path, the author name, automatic sync, th
 | `obsidian-plugin/` | The Obsidian plugin, which shells out to the CLI |
 | `scripts/` | The standalone build, the manifest version check, and helpers that generate Word fixtures and check them in Word |
 | `tests/` | pytest suite and `.docx` fixtures |
+| `.github/workflows/` | The release workflow, which publishes a GitHub release for each version tag |
 
 Install the git hooks once. The pre-commit hook runs ruff, ty, anti-slop-python, pytest, and the plugin's Oxfmt, Oxlint, and build checks. When a commit changes `pyproject.toml`, `obsidian-plugin/manifest.json`, or `obsidian-plugin/package.json`, the hook also runs `scripts/check_versions.py`, which fails when the three versions differ. [`CODING_STANDARDS.md`](CODING_STANDARDS.md) lists every check.
 
@@ -131,6 +132,8 @@ To build the standalone CLI, which runs without Python or uv, run the build scri
 scripts/build_standalone.sh
 ```
 
+To publish a release, follow [`RELEASING.md`](RELEASING.md). [`CHANGELOG.md`](CHANGELOG.md) records the changes in each release.
+
 ## Contributing
 
 Issues are welcome. Open an issue to report a bug or to ask for a feature. The project does not accept pull requests from people outside the team.
@@ -144,5 +147,7 @@ Jillian Kozyra ([@jekozyra](https://github.com/jekozyra)) maintains spsync.
 spsync is released under the MIT license. See [`LICENSE`](LICENSE).
 
 spsync depends on [`merge3`](https://pypi.org/project/merge3/), which is licensed under GPL-2.0-or-later. The repository declares `merge3` as a dependency and does not include its code.
+
+The standalone CLI archive in each GitHub release bundles `merge3` and the other dependencies. The archive includes `THIRD_PARTY_NOTICES.md`, which lists each bundled package and its license, and the `licenses/` folder with the license files. Because of the GPL license of `merge3`, each release also publishes `spsync-X.Y.Z-source.tar.gz`, the complete corresponding source code of the archive: the spsync source at the release tag and the source distribution of each bundled package.
 
 The vendored Oxlint rules in `obsidian-plugin/tools/oxlint/anti-slop/` keep their own MIT license files. [`UPSTREAM.md`](obsidian-plugin/tools/oxlint/anti-slop/UPSTREAM.md) names their source.
