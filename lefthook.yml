@@ -34,6 +34,11 @@ pre-commit:
     diagrams:
       glob: "{docs/images/*.{mmd,svg},obsidian-plugin/diagrams.ts,obsidian-plugin/package.json}"
       run: pnpm -C obsidian-plugin run diagrams:check
+    guide-images:
+      glob:
+        - "scripts/guide_images/*.{ts,json}"
+        - "scripts/guide_images/scenes/*.ts"
+      run: pnpm -C obsidian-plugin exec tsc -p ../scripts/guide_images
     plugin-build:
       root: obsidian-plugin/
       glob: "*.{ts,json}"

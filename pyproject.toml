@@ -41,6 +41,11 @@ dev = [
 build = [
     "nuitka>=4.3",
 ]
+# scripts/guide_images/render.py, which renders the animations of docs/guide.md.
+guide = [
+    "pillow>=13.0",
+    "playwright>=1.65",
+]
 
 [tool.ruff]
 line-length = 120
@@ -59,6 +64,13 @@ max-statements = 40
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "mock.patch".msg = "Avoid patching state. Pass the dependency explicitly instead."
 "unittest.mock.patch".msg = "Avoid patching state. Pass the dependency explicitly instead."
+
+# The guide group is not installed by default, so its imports resolve only after `uv sync --group guide`.
+[[tool.ty.overrides]]
+include = ["scripts/guide_images/**"]
+
+[tool.ty.overrides.rules]
+import-not-found = "ignore"
 
 [tool.anti-slop-python]
 max-module-lines = 500
