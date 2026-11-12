@@ -77,6 +77,7 @@ obsidian-plugin/
   standalone-cli.ts       Download, checksum check, and shared install of the standalone CLI
   *.test.ts               node:test tests, run with `pnpm run test`
   esbuild.ts              Bundle script for main.js
+  diagrams.ts             Renders docs/images/*.mmd to SVG with Pele
   oxlint.config.ts        Oxlint configuration
   tools/oxlint/anti-slop/ Vendored Oxlint rules and their UPSTREAM.md
 ```
