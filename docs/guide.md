@@ -41,7 +41,7 @@ If the OneDrive app is not signed in, sign in with your work account first.
 
 <picture>
   <source media="(prefers-reduced-motion: reduce)" srcset="images/02-onedrive.png">
-  <img src="images/02-onedrive.gif" alt="Click Add shortcut to My files in a SharePoint library, then open the library folder in the OneDrive location in Finder." width="800">
+  <img src="images/02-onedrive.gif" alt="Click Add shortcut to My files in the SharePoint library top bar, then open the library folder in OneDrive in Finder." width="800">
 </picture>
 
 ## 3. Find and open a document

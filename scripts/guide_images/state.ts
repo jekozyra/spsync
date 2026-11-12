@@ -106,6 +106,7 @@ export interface LibraryRow {
   name: string;
   modified: string;
   by: string;
+  kind?: "folder" | "word";
 }
 
 /** A SharePoint document library in the browser. `toast` is the opacity of the confirmation. */

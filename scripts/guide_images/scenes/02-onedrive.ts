@@ -4,11 +4,7 @@ import type { FinderWindow, LibraryWindow, State } from "../state.ts";
 
 function library(): LibraryWindow {
   return {
-    rows: [
-      { name: "Budget draft.docx", modified: "May 9", by: "Sam Lee" },
-      { name: "Meeting notes.docx", modified: "May 11", by: "Alice Smith" },
-      { name: "Project plan.docx", modified: "May 12", by: "Alice Smith" },
-    ],
+    rows: [{ name: "General", modified: "Sep 18", by: "Sam Lee", kind: "folder" }],
     hover: null,
     toast: 0,
     toastText: "Shortcut added to My files.",
@@ -43,10 +39,7 @@ scene<State>({
   init: (st) => ({ ...st, layers: { browser: { o: 1, s: 1, blur: 0 } }, order: ["browser"], library: library(), finder: finder() }),
   script: (s) => {
     s.wait(400).pointerAt({ x: 420, y: 330 });
-    s.move("sync", 700).set((st) => {
-      if (st.library) st.library.hover = "sync";
-    });
-    s.wait(700).move("shortcut", 420);
+    s.move("shortcut", 820);
     s.set((st) => {
       if (st.library) st.library.hover = "shortcut";
     });
