@@ -2,5 +2,11 @@
   "base": {
     "name": "main",
     "hash": "aa7b619a45bf13b073ca989f829294bfcfdb0f64"
-  }
+  },
+  "pr": {
+    "number": 25,
+    "url": "https://github.com/jekozyra/spsync/pull/25"
+  },
+  "pr_title": "feat(cli): add --version and check that manifest versions match",
+  "pr_description": "## Goal\n\nThe CLI reports its version, and the three manifests cannot drift apart. The release workflow and the plugin download depend on one version number for the CLI and the plugin.\n\n## Summary\n\n`spsync --version` prints the installed package version, such as `spsync 0.1.0`. The flag and `spsync doctor` read the version through one function, `cli_version()` in `doctor.py`, so the two outputs always agree.\n\n`scripts/check_versions.py` reads the version from `pyproject.toml`, `obsidian-plugin/manifest.json`, and `obsidian-plugin/package.json`. The script fails and prints each value when the three versions differ or a version is missing. With `--expect X.Y.Z`, the script also compares the three versions to a given version. The release workflow in the next PR uses this option to check the tag. The lefthook pre-commit hook runs the script when a commit stages one of the three files.\n\nThe README lists `--version` and describes the new hook check. The change does not touch docx reading or patching.\n\n## Testing\n\n- `tests/test_cli.py` checks that `spsync --version` prints the package version and exits with 0.\n- `tests/test_check_versions.py` runs the script on temporary manifests. It checks matching versions, a different version in each manifest, a missing version, and `--expect`.\n- Manual check: I staged `obsidian-plugin/manifest.json` with version 0.1.1 and ran the pre-commit hook. The hook failed and printed the three versions.\n- `uv run ruff format --check`, `uv run ruff check`, `uv run ty check`, `uv run anti-slop-python src tests scripts`, and `uv run pytest` pass.\n\n## Issue\n\nRefs #11\n"
 }
