@@ -27,7 +27,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v10
+      # setup-uv publishes no major-version tag, such as v10, so the workflow names a full release.
+      - uses: astral-sh/setup-uv@v10.3.3
 
       - uses: pnpm/action-setup@v6
         with:
