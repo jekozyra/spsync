@@ -2,5 +2,11 @@
   "base": {
     "name": "main",
     "hash": "8b84472d5f16a0ad2ebadad39b8579f134601a43"
-  }
+  },
+  "pr": {
+    "number": 33,
+    "url": "https://github.com/jekozyra/spsync/pull/33"
+  },
+  "pr_title": "docs(tooling): relicense under GPL-2.0-or-later",
+  "pr_description": "## Goal\n\nRelicense spsync source and the standalone CLI archive under GPL-2.0-or-later to align the project license with bundled merge3.\n\n## Summary\n\n- Replaced the MIT license with the unmodified GPL version 2 text and a project notice that grants version 2 or any later version.\n- Declared GPL-2.0-or-later in Python and Obsidian plugin package metadata.\n- Updated the README to describe the spsync, archive, merge3, and vendored Oxlint licenses.\n- Confirmed the standalone archive includes a copy of LICENSE. The build script already performed this copy.\n\n## Testing\n\n- Python format, lint, type, architecture, and test checks passed. Pytest reported 65 passed and 1 deselected.\n- Plugin format, lint, test, and build checks passed. The plugin test suite reported 6 passed.\n- uv build produced GPL-2.0-or-later wheel metadata and included LICENSE in the source archive.\n- scripts/build_standalone.sh succeeded. Its tarball includes a byte-identical LICENSE.\n- git diff --check passed.\n\n## Issue\n\nCloses #22\n"
 }
