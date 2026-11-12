@@ -74,11 +74,14 @@ def _opened(url: str, before: set[str], docs: list[tuple[str, bool]]) -> tuple[s
 
 
 def open_url(url: str, *, edit: bool, timeout: int = OPEN_TIMEOUT_SECONDS) -> tuple[str, bool]:
-    """Open `url` in Word. Returns (Word's canonical URL, read_only)."""
+    """Open `url` in Word without bringing Word to the front. Returns (Word's canonical URL, read_only).
+
+    The `-g` flag keeps the foreground app in front when Word is closed, in front, or in the background.
+    """
     before = {n for n, _ in open_docs()}
     mode = "ofe" if edit else "ofv"
     target = quote(url, safe=URL_SAFE)
-    subprocess.run(["open", f"ms-word:{mode}|u|{target}"], check=False)
+    subprocess.run(["open", "-g", f"ms-word:{mode}|u|{target}"], check=False)
     deadline = time.time() + timeout
     while time.time() < deadline:
         time.sleep(OPEN_POLL_SECONDS)
