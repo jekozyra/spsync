@@ -148,6 +148,6 @@ spsync is released under the MIT license. See [`LICENSE`](LICENSE).
 
 spsync depends on [`merge3`](https://pypi.org/project/merge3/), which is licensed under GPL-2.0-or-later. The repository declares `merge3` as a dependency and does not include its code.
 
-The standalone CLI archive in each GitHub release bundles `merge3` and the other dependencies. The archive includes `THIRD_PARTY_NOTICES.md`, which lists each bundled package and its license, and the `licenses/` folder with the license files. Because of the GPL license of `merge3`, `THIRD_PARTY_NOTICES.md` also contains a written offer for the source code of the build.
+The standalone CLI archive in each GitHub release bundles `merge3` and the other dependencies. The archive includes `THIRD_PARTY_NOTICES.md`, which lists each bundled package and its license, and the `licenses/` folder with the license files. Because of the GPL license of `merge3`, each release also publishes `spsync-X.Y.Z-source.tar.gz`, the complete corresponding source code of the archive: the spsync source at the release tag and the source distribution of each bundled package.
 
 The vendored Oxlint rules in `obsidian-plugin/tools/oxlint/anti-slop/` keep their own MIT license files. [`UPSTREAM.md`](obsidian-plugin/tools/oxlint/anti-slop/UPSTREAM.md) names their source.

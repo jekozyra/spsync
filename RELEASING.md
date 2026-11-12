@@ -8,6 +8,9 @@ A release publishes the CLI and the Obsidian plugin under one version. A pushed 
 | `spsync-macos-arm64.tar.gz.sha256` | The SHA-256 checksum of the archive, in `shasum -a 256` format. The plugin checks it before it runs the CLI |
 | `main.js` | The plugin code. BRAT reads this file |
 | `manifest.json` | The plugin manifest. BRAT reads this file |
+| `spsync-X.Y.Z-source.tar.gz` | The complete corresponding source code of the CLI build, from `scripts/source_archive.py`: the spsync source at the tag and the source distribution of each bundled package |
+
+The CLI archive bundles `merge3`, which is licensed under GPL-2.0-or-later. GPLv2 section 3(a) requires the source code next to the binary, so every release must include the source archive. Do not remove a source archive from a release that keeps its CLI archive.
 
 The plugin downloads the CLI from the release with the plugin's own version. Every fix reaches teammates only through a release.
 
@@ -45,7 +48,7 @@ The plugin downloads the CLI from the release with the plugin's own version. Eve
 
 ## Verify the release
 
-1. Check that the release has the four files:
+1. Check that the release has the five files:
 
    ```sh
    gh release view vX.Y.Z --json assets --jq '.assets[].name'
