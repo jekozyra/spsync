@@ -103,10 +103,8 @@ Jillian Kozyra ([@jekozyra](https://github.com/jekozyra)) maintains spsync.
 
 ## License
 
-spsync is released under the MIT license. See [`LICENSE`](LICENSE).
+spsync source code and the standalone CLI archive are released under the GNU General Public License, version 2 or (at your option) any later version (GPL-2.0-or-later). See [`LICENSE`](LICENSE).
 
-spsync depends on [`merge3`](https://pypi.org/project/merge3/), which is licensed under GPL-2.0-or-later. The repository declares `merge3` as a dependency and does not include its code.
+The standalone CLI archive in each GitHub release bundles [`merge3`](https://pypi.org/project/merge3/), which uses the same GPL-2.0-or-later license, and other dependencies. The archive includes `THIRD_PARTY_NOTICES.md`, which lists each bundled package and its license, and the `licenses/` folder with the license files. Each release also publishes `spsync-X.Y.Z-source.tar.gz`, the complete corresponding source code of the archive: the spsync source at the release tag and the source distribution of each bundled package.
 
-The standalone CLI archive in each GitHub release bundles `merge3` and the other dependencies. The archive includes `THIRD_PARTY_NOTICES.md`, which lists each bundled package and its license, and the `licenses/` folder with the license files. Because of the GPL license of `merge3`, each release also publishes `spsync-X.Y.Z-source.tar.gz`, the complete corresponding source code of the archive: the spsync source at the release tag and the source distribution of each bundled package.
-
-The vendored Oxlint rules in `obsidian-plugin/tools/oxlint/anti-slop/` keep their own MIT license files. [`UPSTREAM.md`](obsidian-plugin/tools/oxlint/anti-slop/UPSTREAM.md) names their source.
+The vendored Oxlint rules in `obsidian-plugin/tools/oxlint/anti-slop/` keep their own MIT licenses. [`UPSTREAM.md`](obsidian-plugin/tools/oxlint/anti-slop/UPSTREAM.md) names their source.

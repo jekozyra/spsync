@@ -3,7 +3,7 @@ name = "spsync"
 version = "0.1.0"
 description = "Edit and comment on SharePoint Word documents as Obsidian notes"
 readme = "README.md"
-license = "MIT"
+license = "GPL-2.0-or-later"
 license-files = ["LICENSE"]
 authors = [
     { name = "jekozyra", email = "jilliankozyra@gmail.com" }
