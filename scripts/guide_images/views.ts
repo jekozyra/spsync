@@ -288,7 +288,12 @@ function libraryView(st: State): string {
   if (!library) return "";
 
   const rows = library.rows
-    .map((r) => `<div class="r"><div class="c1"><span class="docx">W</span>${escapeHtml(r.name)}</div><div class="c2">${escapeHtml(r.modified)}</div><div class="c3">${escapeHtml(r.by)}</div></div>`)
+    .map((r) => {
+      const icon =
+        r.kind === "folder" ? '<span class="folder"></span>' : '<span class="docx">W</span>';
+
+      return `<div class="r"><div class="c1">${icon}${escapeHtml(r.name)}</div><div class="c2">${escapeHtml(r.modified)}</div><div class="c3">${escapeHtml(r.by)}</div></div>`;
+    })
     .join("");
   const toast =
     library.toast > 0
@@ -299,11 +304,15 @@ function libraryView(st: State): string {
   return `
     <div class="titlebar">${TRAFFIC_LIGHTS}<div class="btab"><span class="docx" style="background:#3b7d6e">S</span>Documents - Sample Team</div></div>
     <div class="addr"><span>‹ ›</span><div class="url">sample.sharepoint.com/sites/SampleTeam/Shared Documents</div></div>
-    <div class="suite">☷ SharePoint</div>
-    <div class="site"><div class="logo">ST</div><div class="nm">Sample Team</div></div>
-    <div class="cbar"><span class="cb">+ New</span><span class="cb">↑ Upload</span><span class="cb">Edit in grid view</span>${button("sync", "⟳ Sync")}${button("shortcut", "➕ Add shortcut to My files")}</div>
-    <div class="crumb">Documents</div>
-    <div class="lst"><div class="r hd"><div class="c1">Name</div><div class="c2">Modified</div><div class="c3">Modified By</div></div>${rows}</div>
+    <div class="sitebar">
+      <div class="site"><div class="logo">ST</div><div class="nm">Sample Team</div><span class="site-chevron">⌄</span><span class="site-link">↗</span><span class="site-link">◎</span></div>
+      <div class="library-actions">${button("shortcut", "↗ Add shortcut to My files ▾")}<span class="more">•••</span><span class="separator"></span><span class="create">＋ Create or upload</span></div>
+    </div>
+    <div class="library-viewbar">
+      <div class="library-views"><span class="library-view active">☷ All Documents</span><span class="library-view">☷ In channels</span><span class="library-view">＋ Add view</span></div>
+      <div class="library-tools"><span class="filter">☰</span><span class="app word-app">W</span><span class="app sheet-app">X</span><span class="app slide-app">P</span><span class="details">☷ Details</span></div>
+    </div>
+    <div class="lst"><div class="r hd"><div class="c1">▯　Name　⌄</div><div class="c2">Modified　ⓘ　⌄</div><div class="c3">Modified By　⌄</div></div>${rows}</div>
     ${toast}`;
 }
 
