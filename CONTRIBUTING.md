@@ -101,6 +101,7 @@ The plugin's author name setting runs `spsync mode --author`, so the CLI uses th
 | `obsidian-plugin/` | The Obsidian plugin, which shells out to the CLI and downloads the standalone CLI in `standalone-cli.ts` |
 | `scripts/` | The standalone build, the manifest version check, and helpers that generate Word fixtures and check them in Word |
 | `tests/` | pytest suite and `.docx` fixtures |
+| `docs/` | The illustrated guide in `guide.md`, the guide animations and the README diagrams in `images/`, and the issue tracker notes for agents |
 | `.github/workflows/` | The release workflow, which publishes a GitHub release for each version tag |
 
 ## Checks

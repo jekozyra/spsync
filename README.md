@@ -17,6 +17,8 @@ The Obsidian plugin, **SharePoint Sync**, runs the spsync command-line tool (CLI
 
 ## Setup
 
+[`docs/guide.md`](docs/guide.md) shows each step of the setup and the daily workflow with an animation.
+
 You need:
 
 - A Mac with Apple silicon. spsync does not support Intel Macs.
