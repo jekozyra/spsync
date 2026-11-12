@@ -2,5 +2,11 @@
   "base": {
     "name": "main",
     "hash": "305c65ae838eae8264a38b7a14f3f5d0b1ac5364"
-  }
+  },
+  "pr": {
+    "number": 38,
+    "url": "https://github.com/jekozyra/spsync/pull/38"
+  },
+  "pr_title": "chore(tooling): prepare v0.1.2 release",
+  "pr_description": "## Goal\n\nPrepare v0.1.2 release metadata and notes so users can receive the Word focus fix from PR #37.\n\n## Summary\n\nSet the CLI and plugin versions to 0.1.2 and refresh uv.lock. Add the Word focus fix to the v0.1.2 changelog and update the comparison links.\n\n## Testing\n\n- uv lock --check\n- uv run ruff format --check\n- uv run ruff check\n- uv run ty check\n- uv run anti-slop-python src tests\n- uv run pytest\n- pnpm -C obsidian-plugin run format:check\n- pnpm -C obsidian-plugin run lint\n- pnpm -C obsidian-plugin run test\n- pnpm -C obsidian-plugin run build\n- uv build\n- The pre-commit hook passed version consistency, diagram checks, plugin formatting, and plugin build.\n- The SharePoint integration test from PR #37 was not run because SPSYNC_TEST_SHAREPOINT_URL is not configured.\n\n## Issue\n\nRefs #36\n"
 }
