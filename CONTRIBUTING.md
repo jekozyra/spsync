@@ -99,7 +99,7 @@ The plugin's author name setting runs `spsync mode --author`, so the CLI uses th
 |---|---|
 | `src/spsync/` | The CLI: `cli.py` commands, `config.py` settings, `reader/` and `patch/` docx parsing and patching, `local.py`, `word/`, and `graph.py` backends |
 | `obsidian-plugin/` | The Obsidian plugin, which shells out to the CLI and downloads the standalone CLI in `standalone-cli.ts` |
-| `scripts/` | The standalone build, the manifest version check, and helpers that generate Word fixtures and check them in Word |
+| `scripts/` | The standalone build, the manifest version check, helpers that generate Word fixtures and check them in Word, and the guide image renderer in `guide_images/` |
 | `tests/` | pytest suite and `.docx` fixtures |
 | `docs/` | The illustrated guide in `guide.md`, the guide animations and the README diagrams in `images/`, and the issue tracker notes for agents |
 | `.github/workflows/` | The release workflow, which publishes a GitHub release for each version tag |
@@ -123,6 +123,34 @@ pnpm -C obsidian-plugin run diagrams
 ```
 
 Commit the `.mmd` and the `.svg` together. The pre-commit hook runs `diagrams:check`, which fails when an SVG differs from its source.
+
+## Guide images
+
+`scripts/guide_images/` renders the animations in [`docs/guide.md`](docs/guide.md). Each step of the guide has a scene in `scripts/guide_images/scenes/`. A scene is a TypeScript script of actions, such as "open the command palette" or "show this notice". The renderer opens each scene in headless Chromium, takes a screenshot of each frame, and writes `docs/images/<scene>.gif` and a static `docs/images/<scene>.png` of the last frame.
+
+The scenes copy text from the plugin and the CLI: command names, notices, sync results, and setup checks. When this text changes in `obsidian-plugin/main.ts` or `src/spsync/`, change the scene, and render its images again.
+
+The renderer needs the `guide` dependency group, Chromium for Playwright, and Node 23.6 or later. Install the group and Chromium once:
+
+```sh
+uv sync --group guide
+uv run --group guide playwright install chromium
+```
+
+Render every scene, or name the scenes to render:
+
+```sh
+uv run --group guide python scripts/guide_images/render.py
+uv run --group guide python scripts/guide_images/render.py 05-comments
+```
+
+To check single frames while you edit a scene, pass `--still` with times in milliseconds. The frames go to `--out`:
+
+```sh
+uv run --group guide python scripts/guide_images/render.py 05-comments --still 2000,8000 --out .dev/stills
+```
+
+The images show only the sample document from `scripts/word_fixtures.py` and sample names. Do not add real names, employer names, or work content to a scene. The pre-commit hook type-checks the scenes with `tsc`.
 
 ## Build and release
 
