@@ -4,9 +4,15 @@ This file records the notable changes in each spsync release. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-11
+
 ### Added
 
 - The Obsidian plugin downloads the standalone CLI of its own version from the GitHub release, checks its SHA-256 checksum, and runs it. Every vault shares one install. A non-empty CLI path setting skips the download. Teammates install the plugin with BRAT and need no Python, uv, or Node.
+
+### Changed
+
+- Distribute spsync and the standalone CLI under GPL-2.0-or-later. The CLI archive includes the license text.
 
 ## [0.1.0] - 2026-11-11
 
@@ -22,5 +28,6 @@ This file records the notable changes in each spsync release. The format follows
 - The Obsidian plugin runs the CLI from the command palette, syncs notes automatically, and has a Check setup command and an author setting.
 - A standalone build of the CLI for Apple silicon Macs. The build needs no Python or uv, and includes the license notices of its bundled packages. Each release also publishes the source archive of the build.
 
-[Unreleased]: https://github.com/jekozyra/spsync/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/jekozyra/spsync/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/jekozyra/spsync/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/jekozyra/spsync/releases/tag/v0.1.0

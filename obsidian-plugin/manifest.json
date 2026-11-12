@@ -1,7 +1,7 @@
 {
   "id": "spsync",
   "name": "SharePoint Sync",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "minAppVersion": "1.5.0",
   "description": "Edit and comment on SharePoint Word documents as notes, via the spsync CLI.",
   "author": "Jillian Kozyra",
