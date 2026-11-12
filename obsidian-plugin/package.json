@@ -2,6 +2,7 @@
   "name": "obsidian-spsync",
   "version": "0.1.0",
   "private": true,
+  "license": "GPL-2.0-or-later",
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit && node esbuild.ts",
